@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0c0a07">
+  <title>Pozivnica – 31. Zlatna kuna</title>
+  <link rel="stylesheet" href="/vendor/fontsource/montserrat/600.css">
+  <link rel="stylesheet" href="/vendor/fontsource/montserrat/700.css">
+  <link rel="stylesheet" href="/vendor/fontsource/raleway/300.css">
+  <link rel="stylesheet" href="/vendor/fontsource/raleway/400.css">
+  <link rel="stylesheet" href="/vendor/fontsource/raleway/600.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <script type="module" src="/js/invite.js"></script>
+</head>
+<body class="invite">
+  <main class="invite-card">
+    <header id="logo"></header>
+
+    <div id="loading" class="hint">Učitavanje pozivnice…</div>
+
+    <!-- Pozivnica + obrazac -->
+    <section id="view-invite" hidden>
+      <div class="letter" id="letter"></div>
+      <div class="divider"></div>
+
+      <form id="rsvp-form" class="rsvp no-print" novalidate>
+        <h2 class="gold-text">Potvrda dolaska</h2>
+        <p class="lead" id="rsvp-lead">Molimo upišite svoje ime i prezime te osobe u pratnji.</p>
+        <div id="form-error" class="alert alert-err" role="alert" hidden></div>
+        <div class="row">
+          <div class="field">
+            <label for="firstName">Ime</label>
+            <input type="text" id="firstName" name="firstName" autocomplete="given-name" maxlength="80" required>
+          </div>
+          <div class="field">
+            <label for="lastName">Prezime</label>
+            <input type="text" id="lastName" name="lastName" autocomplete="family-name" maxlength="80" required>
+          </div>
+        </div>
+
+        <div class="companions" id="companions-block">
+          <div class="companions-head">
+            <span class="label">Pratnja</span>
+            <span class="hint" id="companions-hint"></span>
+          </div>
+          <div id="companions"></div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn btn-gold btn-lg btn-block" id="btn-confirm">Potvrđujem dolazak</button>
+          <button type="button" class="btn btn-outline btn-block" id="btn-decline" hidden>Nažalost, ne mogu doći</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Uspješna prijava -->
+    <section id="view-success" class="success" hidden>
+      <div class="rsvp" style="text-align:center">
+        <div class="tick" aria-hidden="true">✓</div>
+        <h2 class="gold-text">Prijava je uspješna</h2>
+        <p id="success-lead"></p>
+        <div class="qr-box"><img id="qr-img" alt="QR kod pozivnice"></div>
+        <div class="qr-code-text" id="qr-text"></div>
+        <ul class="person-list" id="success-persons"></ul>
+        <div class="notice">
+          <strong>Važno:</strong> ovaj QR kod morate pokazati <strong>pri preuzimanju ulaznica</strong> na blagajni
+          Hrvatskog narodnog kazališta i <strong>pri ulasku u dvoranu</strong>.
+          <span id="notice-party"></span>
+        </div>
+        <div class="actions center no-print">
+          <a class="btn btn-gold" id="btn-download" download>Preuzmi QR kod</a>
+          <button type="button" class="btn btn-outline" id="btn-edit">Izmijeni podatke</button>
+        </div>
+        <p class="hint" id="save-hint">Spremite QR kod na mobitel ili napravite snimku zaslona. Ovu stranicu možete ponovno otvoriti putem istog linka.</p>
+        <div id="own-link" hidden>
+          <p class="hint">Vaš osobni link:</p>
+          <div class="link-box"><span id="own-link-text"></span><button type="button" class="btn btn-ghost btn-sm" id="btn-copy-link">Kopiraj</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Otkazan dolazak -->
+    <section id="view-declined" hidden>
+      <div class="rsvp" style="text-align:center">
+        <h2 class="gold-text">Hvala na odgovoru</h2>
+        <p>Žao nam je što ne možete prisustvovati 31. Zlatnoj kuni. Vaša isprika je zabilježena.</p>
+        <div class="actions center">
+          <button type="button" class="btn btn-outline" id="btn-undecline">Ipak dolazim</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Greška / zatvoreno -->
+    <section id="view-message" hidden>
+      <div class="rsvp" style="text-align:center">
+        <h2 class="gold-text" id="message-title"></h2>
+        <p id="message-text"></p>
+      </div>
+    </section>
+
+    <section id="footer" hidden>
+      <div class="notes" id="notes"></div>
+      <p class="notes" id="contact"></p>
+      <div class="regards" id="regards"></div>
+      <img class="hgk-logo" src="/img/hgk.svg" alt="HGK – Hrvatska gospodarska komora" width="150" height="82">
+    </section>
+  </main>
+</body>
+</html>

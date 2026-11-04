@@ -1,0 +1,32 @@
+{
+  "name": "zlatna-kuna-pozivnice",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pozivnice, potvrde dolaska i prijava gostiju za 31. Zlatnu kunu (HGK)",
+  "type": "module",
+  "main": "index.js",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env index.js",
+    "dev": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env --watch index.js",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "@fontsource/montserrat": "^5.3.0",
+    "@fontsource/raleway": "^5.3.0",
+    "cookie-session": "^2.1.1",
+    "dejavu-fonts-ttf": "2.37",
+    "exceljs": "^4.4.0",
+    "express": "^5.3.0",
+    "html5-qrcode": "^2.3.8",
+    "pdfkit": "^0.17.2",
+    "qrcode": "1.5"
+  },
+  "devDependencies": {
+    "jsqr": "1.4",
+    "pngjs": "^7.0.0",
+    "supertest": "^7.3.1"
+  }
+}

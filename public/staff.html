@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0c0a07">
+  <title>Uzvanici – 31. Zlatna kuna</title>
+  <link rel="stylesheet" href="/vendor/fontsource/montserrat/600.css">
+  <link rel="stylesheet" href="/vendor/fontsource/montserrat/700.css">
+  <link rel="stylesheet" href="/vendor/fontsource/raleway/400.css">
+  <link rel="stylesheet" href="/vendor/fontsource/raleway/600.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/vendor/html5-qrcode.min.js" defer></script>
+  <script type="module" src="/js/staff.js"></script>
+</head>
+<body class="staff">
+  <header class="topbar">
+    <div id="top-logo"></div>
+    <div class="who">
+      <span class="badge badge-role" id="role-badge"></span>
+      <span class="name" id="user-name"></span>
+      <button type="button" class="btn btn-outline btn-sm" id="btn-logout">Odjava</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="scan" aria-selected="true">Skeniranje</button>
+    <button role="tab" data-tab="list" aria-selected="false">Popis uzvanika</button>
+    <button role="tab" data-tab="add" aria-selected="false" data-admin hidden>Dodaj uzvanike</button>
+    <button role="tab" data-tab="export" aria-selected="false" data-admin hidden>Izvoz</button>
+    <button role="tab" data-tab="settings" aria-selected="false" data-admin hidden>Postavke i korisnici</button>
+  </nav>
+
+  <main>
+    <!-- SKENIRANJE -->
+    <section data-panel="scan">
+      <div class="grid-2">
+        <div class="panel">
+          <h2>Skeniraj QR kod</h2>
+          <div class="scanner-wrap">
+            <div id="reader"></div>
+            <div class="scanner-placeholder" id="scanner-placeholder">Kamera je isključena.<br>Pritisnite „Pokreni kameru”.</div>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-gold" id="btn-camera">Pokreni kameru</button>
+            <label class="btn btn-outline" for="scan-file">Skeniraj iz slike</label>
+            <input type="file" id="scan-file" accept="image/*" hidden>
+          </div>
+          <div id="camera-error" class="alert alert-warn" hidden></div>
+          <form id="manual-form" class="toolbar" style="margin-top:16px">
+            <input type="search" id="manual-code" placeholder="Ručni unos koda (npr. ZK31:…)" aria-label="Ručni unos koda" autocomplete="off">
+            <button class="btn btn-outline" type="submit">Provjeri</button>
+          </form>
+        </div>
+        <div class="panel">
+          <h2>QR ne radi? Potraži uzvanika</h2>
+          <input type="search" id="scan-search" placeholder="Upišite ime ili prezime…" aria-label="Pretraži uzvanika" autocomplete="off">
+          <ul class="results" id="scan-results"></ul>
+          <p class="hint" id="scan-search-hint">Pretraga traži nositelje pozivnica i osobe u pratnji, bez obzira na kvačice (č, ć, š, ž, đ).</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- POPIS -->
+    <section data-panel="list" hidden>
+      <div class="stats" id="stats"></div>
+      <div class="panel">
+        <div class="toolbar">
+          <input type="search" id="list-search" placeholder="Pretraži ime, prezime, organizaciju…" aria-label="Pretraži popis" autocomplete="off">
+          <select id="list-filter" aria-label="Filtar statusa">
+            <option value="all">Svi</option>
+            <option value="confirmed">Potvrdili dolazak</option>
+            <option value="declined">Ne dolaze</option>
+            <option value="pending">Nisu odgovorili</option>
+            <option value="checked_in">Došli (skenirani)</option>
+            <option value="not_arrived">Potvrdili, još nisu došli</option>
+          </select>
+          <select id="list-group" aria-label="Filtar grupe"><option value="">Sve grupe</option></select>
+          <button class="btn btn-outline btn-sm" id="btn-refresh" type="button">Osvježi</button>
+        </div>
+        <p class="count-line" id="list-count"></p>
+        <table class="table">
+          <thead><tr><th>Uzvanik i pratnja</th><th>Organizacija / grupa</th><th>Status</th><th>Došli</th><th></th></tr></thead>
+          <tbody id="list-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- DODAVANJE (admin) -->
+    <section data-panel="add" hidden>
+      <div class="grid-2">
+        <form class="panel" id="add-form" novalidate>
+          <h2>Dodaj uzvanika</h2>
+          <div id="add-error" class="alert alert-err" hidden></div>
+          <div class="row">
+            <div class="field"><label for="a-first">Ime</label><input type="text" id="a-first" maxlength="80" required></div>
+            <div class="field"><label for="a-last">Prezime</label><input type="text" id="a-last" maxlength="80" required></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="a-org">Organizacija</label><input type="text" id="a-org" maxlength="160"></div>
+            <div class="field"><label for="a-group">Grupa</label><input type="text" id="a-group" maxlength="80" list="groups" placeholder="npr. Dobitnici, Mediji, VIP"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="a-email">E-mail</label><input type="email" id="a-email" maxlength="160"></div>
+            <div class="field"><label for="a-max">Najviše pratnje</label><input type="number" id="a-max" min="0" max="20"></div>
+          </div>
+          <div class="companions">
+            <div class="companions-head"><span class="label">Pratnja</span><span class="hint">ime i prezime</span></div>
+            <div id="a-companions"></div>
+          </div>
+          <label class="check" style="margin-top:16px"><input type="checkbox" id="a-confirm" checked>
+            <span>Automatski potvrdi dolazak<br><span class="hint">Uzvanik odmah dobiva QR kod. Ako isključite, dobiva osobni link za potvrdu dolaska.</span></span></label>
+          <div class="actions"><button class="btn btn-gold" type="submit">Dodaj na popis</button></div>
+          <div id="add-result"></div>
+        </form>
+
+        <form class="panel" id="bulk-form" novalidate>
+          <h2>Skupni unos</h2>
+          <p class="hint mt0">Jedan uzvanik po retku: <code>Ime Prezime; Organizacija; Grupa; e-mail</code>. Organizacija, grupa i e-mail nisu obavezni. Može se zalijepiti i iz Excela (stupci odvojeni tabulatorom).</p>
+          <div class="field"><textarea id="b-text" placeholder="Ivan Horvat; Končar d.d.; Dobitnici; ivan@primjer.hr&#10;Ana Kovačić; HRT; Mediji"></textarea></div>
+          <div class="row">
+            <div class="field"><label for="b-group">Zadana grupa</label><input type="text" id="b-group" list="groups" maxlength="80"></div>
+            <div class="field"><label for="b-max">Najviše pratnje</label><input type="number" id="b-max" min="0" max="20"></div>
+          </div>
+          <label class="check"><input type="checkbox" id="b-confirm"> <span>Automatski potvrdi dolazak svima</span></label>
+          <div class="actions"><button class="btn btn-gold" type="submit">Uvezi</button></div>
+          <div id="bulk-result"></div>
+        </form>
+      </div>
+      <datalist id="groups"></datalist>
+    </section>
+
+    <!-- IZVOZ (admin) -->
+    <section data-panel="export" hidden>
+      <div class="panel" style="max-width:720px">
+        <h2>Izvoz popisa</h2>
+        <p class="hint mt0">Popis je grupiran po statusu (dolaze, ne dolaze, nisu odgovorili, došli) i po grupi uzvanika. Pratnja je navedena odmah ispod osobe koju prati kao „Ime Prezime – pratnja”.</p>
+        <div class="field" style="max-width:340px">
+          <label for="export-filter">Što izvesti</label>
+          <select id="export-filter">
+            <option value="all">Sve – grupirano po statusu</option>
+            <option value="confirmed">Samo oni koji dolaze</option>
+            <option value="declined">Samo oni koji ne dolaze</option>
+            <option value="pending">Samo oni koji nisu odgovorili</option>
+            <option value="checked_in">Samo oni koji su došli (skenirani)</option>
+          </select>
+        </div>
+        <div class="actions">
+          <a class="btn btn-gold" id="export-pdf" href="#">Preuzmi PDF</a>
+          <a class="btn btn-gold" id="export-xlsx" href="#">Preuzmi Excel</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- POSTAVKE (admin) -->
+    <section data-panel="settings" hidden>
+      <div class="grid-2">
+        <div class="panel">
+          <h2>Pozivnice</h2>
+          <div class="switch-row">
+            <div><strong>Opći link za prijavu</strong><div class="hint">Svatko s ovim linkom može upisati ime i prijaviti se.</div></div>
+            <input type="checkbox" id="s-open" style="width:22px;height:22px;accent-color:var(--gold)">
+          </div>
+          <div class="link-box" style="margin:12px 0"><span id="s-link"></span><button type="button" class="btn btn-ghost btn-sm" id="s-copy">Kopiraj</button></div>
+          <div class="field" style="max-width:240px;margin-top:14px">
+            <label for="s-max">Zadani broj pratnje po pozivnici</label>
+            <input type="number" id="s-max" min="0" max="20">
+          </div>
+          <div class="actions"><button class="btn btn-gold btn-sm" id="s-save" type="button">Spremi postavke</button></div>
+        </div>
+
+        <div class="panel">
+          <h2>Korisnici</h2>
+          <table class="table"><tbody id="users-body"></tbody></table>
+          <form id="user-form" novalidate style="margin-top:16px">
+            <h3>Novi korisnik</h3>
+            <div id="user-error" class="alert alert-err" hidden></div>
+            <div class="row">
+              <div class="field"><label for="u-name">Ime i prezime</label><input type="text" id="u-name" maxlength="80"></div>
+              <div class="field"><label for="u-username">Korisničko ime</label><input type="text" id="u-username" maxlength="60" autocomplete="off" autocapitalize="none"></div>
+            </div>
+            <div class="row">
+              <div class="field"><label for="u-password">Lozinka (min. 8 znakova)</label><input type="password" id="u-password" autocomplete="new-password"></div>
+              <div class="field"><label for="u-role">Uloga</label>
+                <select id="u-role"><option value="moderator">Moderator</option><option value="admin">Administrator</option></select></div>
+            </div>
+            <button class="btn btn-gold btn-sm" type="submit">Dodaj korisnika</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal-root"></div>
+</body>
+</html>
