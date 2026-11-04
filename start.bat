@@ -16,10 +16,9 @@ if not exist node_modules (
 )
 
 if not exist .env (
-  copy .env.example .env >nul
-  echo Kreirana je datoteka .env - upisite lozinke za admina i moderatora pa ponovno pokrenite.
-  notepad .env
-  exit /b 0
+  echo Prvo pokretanje - generiram lozinke za admina i moderatora...
+  node scripts\init-env.mjs
+  if exist PRISTUPNI-PODACI.txt start "" notepad PRISTUPNI-PODACI.txt
 )
 
 echo Aplikacija se pokrece na http://localhost:3000

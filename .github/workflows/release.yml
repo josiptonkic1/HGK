@@ -1,0 +1,111 @@
+# Gradi paket aplikacije (poslužitelj) i Android aplikaciju te ih objavljuje
+# zajedno na stranici Releases. Stalni linkovi na najnoviju verziju:
+#   .../releases/latest/download/zlatna-kuna-31.zip   (aplikacija za računalo/server)
+#   .../releases/latest/download/zlatna-kuna.apk      (Android aplikacija)
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'scripts/**'
+      - 'mobile/**'
+      - 'index.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'start.bat'
+      - 'start.sh'
+      - 'tunel.bat'
+      - '.env.example'
+      - 'README.md'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # ubuntu-24.04 slika već sadrži Android SDK (ANDROID_HOME)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # ---------- testovi ----------
+      - name: Testovi
+        run: |
+          npm ci
+          npm test
+
+      # ---------- paket aplikacije ----------
+      - name: Paket aplikacije (ZIP)
+        run: |
+          PKG=build/zlatna-kuna-31
+          mkdir -p "$PKG"
+          cp -r index.js package.json package-lock.json README.md .env.example start.bat start.sh tunel.bat Dockerfile .dockerignore src public scripts "$PKG"/
+          (cd "$PKG" && npm ci --omit=dev --no-audit --no-fund)
+          # .env i lozinke se NE pakiraju - generiraju se pri prvom pokretanju
+          test ! -e "$PKG/.env" && test ! -e "$PKG/PRISTUPNI-PODACI.txt"
+          (cd build && zip -qr ../zlatna-kuna-31.zip zlatna-kuna-31)
+          ls -lh zlatna-kuna-31.zip
+
+      # ---------- Android ----------
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Android SDK
+        run: |
+          test -d "$ANDROID_HOME"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" --install "platforms;android-36" "build-tools;36.0.0" > /dev/null
+
+      - name: Build APK
+        working-directory: mobile
+        run: |
+          npm ci
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../../zlatna-kuna.apk
+
+      # ---------- objava ----------
+      - name: Objava na Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: 31. Zlatna kuna – verzija 1.0.${{ github.run_number }}
+          make_latest: true
+          files: |
+            zlatna-kuna-31.zip
+            zlatna-kuna.apk
+          body: |
+            ## 31. Zlatna kuna – pozivnice i prijava gostiju
+
+            ### 💻 Aplikacija (računalo / server) – `zlatna-kuna-31.zip`
+            1. Preuzmite i raspakirajte ZIP.
+            2. Pokrenite **`start.bat`** (Windows) ili `start.sh` (Linux/macOS). Potreban je [Node.js](https://nodejs.org) 22 ili noviji.
+            3. Pri prvom pokretanju generiraju se lozinke za **admina** i **moderatora** i otvara se `PRISTUPNI-PODACI.txt`.
+            4. Aplikacija se otvara na http://localhost:3000/prijava
+
+            Za pristup s mobitela pokrenite i `tunel.bat` (privremena HTTPS adresa) ili aplikaciju postavite na server (vidi README).
+
+            ### 📱 Android aplikacija – `zlatna-kuna.apk`
+            Za moderatore na ulazu: skeniranje QR kodova pozivnica.
+            1. Preuzmite APK na mobitel i otvorite ga (dopustite instalaciju iz nepoznatog izvora).
+            2. Upišite adresu poslužitelja (https://…) i prijavite se.
+
+            _Testna (debug) verzija Android aplikacije._

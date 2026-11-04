@@ -24,6 +24,13 @@ Web aplikacija za HGK: uzvanici kroz link pozivnice potvrđuju dolazak (s pratnj
 - **izvoz u PDF i Excel** – svi ili samo dolaze, ne dolaze, nisu odgovorili ili došli. Popis je grupiran po statusu i grupi uzvanika, a pratnja je ispisana kao „Ime Prezime – pratnja” odmah ispod osobe koju prati. U Excelu su statusi na zasebnim listovima, a redovi su grupirani (mogu se sklapati),
 - upravljanje korisnicima (admini i moderatori) i postavkama (opći link, zadani broj pratnje).
 
+## Preuzimanje
+
+- **Aplikacija (računalo/server):** https://github.com/josiptonkic1/HGK/releases/latest/download/zlatna-kuna-31.zip – raspakirajte i pokrenite `start.bat`. Pri prvom pokretanju generiraju se lozinke za admina i moderatora (`PRISTUPNI-PODACI.txt`).
+- **Android aplikacija:** https://github.com/josiptonkic1/HGK/releases/latest/download/zlatna-kuna.apk
+
+Oba se automatski grade i objavljuju (`.github/workflows/release.yml`) pri svakoj promjeni na grani `main`.
+
 ## Pokretanje
 
 Potreban je Node.js 22.13 ili noviji (koristi ugrađeni SQLite, bez dodatne baze).
