@@ -58,6 +58,15 @@ Instalirana aplikacija otvara se izravno na panel za skeniranje. Instalacija i k
 
 Testovi: `npm test`
 
+## Android aplikacija
+
+Mapa `mobile/` sadrži Android aplikaciju (Capacitor) za moderatore i administratore.
+- **Preuzimanje:** https://github.com/josiptonkic1/HGK/releases/latest/download/zlatna-kuna.apk
+- APK se automatski gradi na GitHub Actions (`.github/workflows/android.yml`) pri svakoj promjeni u `mobile/`. Ručno se pokreće pod Actions → Android APK → Run workflow.
+- Pri prvom pokretanju aplikacija traži adresu poslužitelja (npr. `https://zlatnakuna.hgk.hr`), provjeri je i otvori panel za skeniranje s pristupom kameri. Adresa se mijenja gumbom „Poslužitelj” u panelu.
+- Aplikacija ne radi bez poslužitelja: on mora biti dostupan s interneta preko HTTPS-a.
+- Ovo je testna (debug) verzija. Za Google Play treba potpisani release build.
+
 ## Produkcija
 
 - Aplikacija mora biti dostupna preko **HTTPS-a**, jer preglednici bez njega ne dopuštaju pristup kameri za skeniranje. Postavite `COOKIE_SECURE=true`.

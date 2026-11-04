@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Zlatna kuna</string>
+    <string name="title_activity_main">Zlatna kuna</string>
+    <string name="package_name">hr.hgk.zlatnakuna</string>
+    <string name="custom_url_scheme">hr.hgk.zlatnakuna</string>
+</resources>

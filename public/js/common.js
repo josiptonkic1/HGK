@@ -5,6 +5,11 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 }
 
+// Otvoreno u Android aplikaciji (Capacitor dodaje oznaku u User-Agent)?
+export const inMobileApp = /ZlatnaKunaApp/.test(navigator.userAgent);
+// Početni ekran aplikacije za promjenu adrese poslužitelja.
+export const MOBILE_SETUP_URL = 'https://localhost/?promijeni';
+
 // Gumb "Instaliraj aplikaciju" - preglednik javlja kad je instalacija moguća.
 let installEvent = null;
 export function setupInstallButton(button) {

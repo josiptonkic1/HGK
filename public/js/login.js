@@ -1,4 +1,6 @@
-import { $, api, logoHtml, sprinkleDust } from './common.js';
+import { $, api, logoHtml, sprinkleDust, inMobileApp } from './common.js';
+
+if (inMobileApp) $('#app-server').hidden = false;
 
 $('#logo').innerHTML = logoHtml();
 sprinkleDust();

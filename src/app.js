@@ -116,6 +116,8 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
 
   // ---------- javni API ----------
   app.get('/api/event', (req, res) => {
+    // Javni podaci; Android aplikacija ovim provjerava upisanu adresu poslužitelja.
+    res.set('Access-Control-Allow-Origin', '*');
     const s = store.getSettings(db);
     res.json({ event: EVENT, openRegistration: s.openRegistration, defaultMaxCompanions: s.defaultMaxCompanions });
   });

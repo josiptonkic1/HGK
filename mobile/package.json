@@ -1,0 +1,1 @@
+{"name":"zlatna-kuna-mobile","version":"1.0.0","private":true,"description":"Android aplikacija za skeniranje pozivnica - 31. Zlatna kuna","dependencies":{"@capacitor/android":"^8.6.0","@capacitor/cli":"^8.6.0","@capacitor/core":"^8.6.0"}}

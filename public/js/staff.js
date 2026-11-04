@@ -1,6 +1,7 @@
-import { $, $$, api, esc, logoHtml, fmtDateTime, fmtTime, normalize, toast, copyText, companionEditor, companionLabel, setupInstallButton } from './common.js';
+import { $, $$, api, esc, logoHtml, fmtDateTime, fmtTime, normalize, toast, copyText, companionEditor, companionLabel, setupInstallButton, inMobileApp } from './common.js';
 
-setupInstallButton(document.getElementById('btn-install'));
+if (inMobileApp) document.getElementById('btn-server').hidden = false; // u aplikaciji je već "instalirano"
+else setupInstallButton(document.getElementById('btn-install'));
 
 let user;
 let invitations = [];

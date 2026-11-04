@@ -1,0 +1,77 @@
+# Gradi Android aplikaciju (APK) i objavljuje je na stranici Releases.
+# Link za preuzimanje najnovije verzije:
+#   https://github.com/<vlasnik>/<repozitorij>/releases/latest/download/zlatna-kuna.apk
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Instalacija paketa
+        run: npm ci
+
+      - name: Capacitor sync
+        run: npx cap sync android
+
+      - name: Build APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Priprema datoteke
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk zlatna-kuna.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zlatna-kuna-apk
+          path: mobile/zlatna-kuna.apk
+
+      - name: Objava na Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-${{ github.run_number }}
+          name: Android aplikacija – build ${{ github.run_number }}
+          make_latest: true
+          files: mobile/zlatna-kuna.apk
+          body: |
+            Android aplikacija za skeniranje pozivnica – 31. Zlatna kuna.
+
+            **Instalacija:** preuzmite `zlatna-kuna.apk` na mobitel i otvorite ga.
+            Android će tražiti dopuštenje za instalaciju iz nepoznatog izvora – dopustite ga za preglednik.
+
+            Pri prvom pokretanju upišite adresu poslužitelja (https://…), zatim se prijavite kao moderator ili admin.
+            Ovo je testna (debug) verzija.

@@ -1,0 +1,14 @@
+{
+  "appId": "hr.hgk.zlatnakuna",
+  "appName": "Zlatna kuna",
+  "webDir": "www",
+  "appendUserAgent": "ZlatnaKunaApp",
+  "backgroundColor": "#0c0a07",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": ["*"]
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

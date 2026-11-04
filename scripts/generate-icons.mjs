@@ -16,12 +16,22 @@ function gold(t) {
   return GOLD[i].map((c, k) => Math.round(c + (GOLD[i + 1][k] - c) * f));
 }
 
-function icon(size, { maskable = false } = {}) {
+// transparent = samo zlatni znak bez pozadine (prednji sloj Android adaptivne ikone)
+// padRatio = rub oko znaka (udio veličine)
+function icon(size, { maskable = false, transparent = false, padRatio } = {}) {
   const png = new PNG({ width: size, height: size });
   const set = (x, y, [r, g, b], a = 255) => {
     if (x < 0 || y < 0 || x >= size || y >= size) return;
     const i = (y * size + x) * 4;
     const k = a / 255;
+    if (transparent) {
+      // prozirna podloga: boja znaka, prozirnost = pokrivenost
+      png.data[i] = r;
+      png.data[i + 1] = g;
+      png.data[i + 2] = b;
+      png.data[i + 3] = Math.max(png.data[i + 3], a);
+      return;
+    }
     png.data[i] = Math.round(png.data[i] * (1 - k) + r * k);
     png.data[i + 1] = Math.round(png.data[i + 1] * (1 - k) + g * k);
     png.data[i + 2] = Math.round(png.data[i + 2] * (1 - k) + b * k);
@@ -29,7 +39,7 @@ function icon(size, { maskable = false } = {}) {
   };
 
   // pozadina: tamna s blagim zlatnim sjajem pri vrhu
-  for (let y = 0; y < size; y++) {
+  for (let y = 0; y < size && !transparent; y++) {
     for (let x = 0; x < size; x++) {
       const dx = (x - size / 2) / size;
       const dy = (y - size * 0.25) / size;
@@ -39,7 +49,7 @@ function icon(size, { maskable = false } = {}) {
   }
 
   // sadržaj unutar sigurne zone (maskable: 80 %)
-  const pad = size * (maskable ? 0.2 : 0.12);
+  const pad = size * (padRatio ?? (maskable ? 0.2 : 0.12));
   const area = size - pad * 2;
   const top = pad + area * 0.12;
   const h = area * 0.62;
@@ -91,3 +101,20 @@ const files = [
 ];
 for (const [name, buf] of files) writeFileSync(join(OUT, name), buf);
 console.log('Ikone generirane:', files.map(([n]) => n).join(', '));
+
+// Android aplikacija (mobile/android): klasične ikone + prednji sloj adaptivne ikone.
+const RES = join(dirname(fileURLToPath(import.meta.url)), '..', 'mobile', 'android', 'app', 'src', 'main', 'res');
+const DENSITIES = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
+try {
+  for (const [d, k] of Object.entries(DENSITIES)) {
+    const dir = join(RES, `mipmap-${d}`);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'ic_launcher.png'), icon(Math.round(48 * k), { padRatio: 0.1 }));
+    writeFileSync(join(dir, 'ic_launcher_round.png'), icon(Math.round(48 * k), { padRatio: 0.2 }));
+    // adaptivna ikona: platno 108 dp, vidljivo ~66 dp u sredini
+    writeFileSync(join(dir, 'ic_launcher_foreground.png'), icon(Math.round(108 * k), { transparent: true, padRatio: 0.26 }));
+  }
+  console.log('Android ikone generirane u', RES);
+} catch (err) {
+  console.warn('Android ikone preskočene:', err.message);
+}

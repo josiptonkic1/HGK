@@ -43,6 +43,11 @@ describe('pozivnica (gost)', () => {
     assert.equal(res.body.event.title, '31. Zlatna kuna');
     assert.match(res.body.event.intro, /31\. svečanu dodjelu/);
     assert.equal(res.body.openRegistration, true);
+    // Android aplikacija provjerava adresu poslužitelja s druge domene
+    assert.equal(res.headers['access-control-allow-origin'], '*');
+    // ...ali podaci osoblja nisu dostupni s drugih domena
+    const staff = await anon().get('/api/staff/invitations');
+    assert.equal(staff.headers['access-control-allow-origin'], undefined);
   });
 
   test('osobni link: potvrda dolaska s pratnjom generira QR kod', async () => {
