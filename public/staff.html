@@ -71,7 +71,7 @@
         <h2>Preuzete pozivnice</h2>
         <p class="count-line" id="log-count"></p>
         <table class="table">
-          <thead><tr><th>Vrijeme</th><th>Ime i prezime</th><th>Pratnja od</th><th>Organizacija</th><th>Moderator</th></tr></thead>
+          <thead><tr><th>Vrijeme</th><th>Ime i prezime</th><th>Pratnja od</th><th>Moderator</th></tr></thead>
           <tbody id="log-body"></tbody>
         </table>
       </div>
@@ -91,12 +91,11 @@
             <option value="checked_in">Došli (skenirani)</option>
             <option value="not_arrived">Potvrdili, još nisu došli</option>
           </select>
-          <select id="list-group" aria-label="Filtar grupe"><option value="">Sve grupe</option></select>
           <button class="btn btn-outline btn-sm" id="btn-refresh" type="button">Osvježi</button>
         </div>
         <p class="count-line" id="list-count"></p>
         <table class="table">
-          <thead><tr><th>Uzvanik i pratnja</th><th>Organizacija / grupa</th><th>Status</th><th>Došli</th><th></th></tr></thead>
+          <thead><tr><th>Uzvanik i pratnja</th><th>Status</th><th>Došli</th><th></th></tr></thead>
           <tbody id="list-body"></tbody>
         </table>
       </div>
@@ -111,10 +110,6 @@
           <div class="row">
             <div class="field"><label for="a-first">Ime</label><input type="text" id="a-first" maxlength="80" required></div>
             <div class="field"><label for="a-last">Prezime</label><input type="text" id="a-last" maxlength="80" required></div>
-          </div>
-          <div class="row">
-            <div class="field"><label for="a-org">Organizacija</label><input type="text" id="a-org" maxlength="160"></div>
-            <div class="field"><label for="a-group">Grupa</label><input type="text" id="a-group" maxlength="80" list="groups" placeholder="npr. Dobitnici, Mediji, VIP"></div>
           </div>
           <div class="row">
             <div class="field"><label for="a-email">E-mail</label><input type="email" id="a-email" maxlength="160"></div>
@@ -132,10 +127,9 @@
 
         <form class="panel" id="bulk-form" novalidate>
           <h2>Skupni unos</h2>
-          <p class="hint mt0">Jedan uzvanik po retku: <code>Ime Prezime; Organizacija; Grupa; e-mail</code>. Organizacija, grupa i e-mail nisu obavezni. Može se zalijepiti i iz Excela (stupci odvojeni tabulatorom).</p>
-          <div class="field"><textarea id="b-text" placeholder="Ivan Horvat; Končar d.d.; Dobitnici; ivan@primjer.hr&#10;Ana Kovačić; HRT; Mediji"></textarea></div>
+          <p class="hint mt0">Jedan uzvanik po retku: <code>Ime Prezime</code> ili <code>Ime Prezime; e-mail</code>. Može se zalijepiti i iz Excela (stupci odvojeni tabulatorom).</p>
+          <div class="field"><textarea id="b-text" placeholder="Ivan Horvat; ivan@primjer.hr&#10;Ana Kovačić"></textarea></div>
           <div class="row">
-            <div class="field"><label for="b-group">Zadana grupa</label><input type="text" id="b-group" list="groups" maxlength="80"></div>
             <div class="field"><label for="b-max">Najviše pratnje</label><input type="number" id="b-max" min="0" max="20"></div>
           </div>
           <label class="check"><input type="checkbox" id="b-confirm"> <span>Automatski potvrdi dolazak svima</span></label>
@@ -143,14 +137,13 @@
           <div id="bulk-result"></div>
         </form>
       </div>
-      <datalist id="groups"></datalist>
     </section>
 
     <!-- IZVOZ (admin) -->
     <section data-panel="export" hidden>
       <div class="panel" style="max-width:720px">
         <h2>Izvoz popisa</h2>
-        <p class="hint mt0">Popis je grupiran po statusu (dolaze, ne dolaze, nisu odgovorili, došli) i po grupi uzvanika. Pratnja je navedena odmah ispod osobe koju prati kao „Ime Prezime – pratnja”.</p>
+        <p class="hint mt0">Popis je grupiran po statusu (dolaze, ne dolaze, nisu odgovorili, došli). Pratnja je navedena odmah ispod osobe koju prati kao „Ime Prezime – pratnja”.</p>
         <div class="field" style="max-width:340px">
           <label for="export-filter">Što izvesti</label>
           <select id="export-filter">

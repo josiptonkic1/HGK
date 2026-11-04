@@ -196,7 +196,7 @@ describe('administracija popisa', () => {
     const ctx = setup();
     const a = await ctx.admin();
     const conf = await a.post('/api/admin/invitations').send({
-      firstName: 'Vlado', lastName: 'Vuk', organization: 'HEP', groupName: 'Dobitnici', confirm: true,
+      firstName: 'Vlado', lastName: 'Vuk', confirm: true,
       companions: [{ firstName: 'Vesna', lastName: 'Vuk' }, { firstName: 'Vid', lastName: 'Vuk' }],
     });
     assert.equal(conf.status, 201);
@@ -228,14 +228,15 @@ describe('administracija popisa', () => {
     await m.post('/api/staff/checkin').send({ invitationId: inv.id, guestIds: [leo.id] });
 
     const renamed = await a.put(`/api/admin/invitations/${inv.id}`).send({
-      organization: 'Podravka', companions: [{ id: leo.id, firstName: 'Leon', lastName: 'Ban' }, { firstName: 'Mia', lastName: 'Ban' }],
+      email: 'ema@primjer.hr', companions: [{ id: leo.id, firstName: 'Leon', lastName: 'Ban' }, { firstName: 'Mia', lastName: 'Ban' }],
     });
     assert.equal(renamed.status, 200);
     const leon = renamed.body.invitation.guests.find((g) => g.id === leo.id);
     assert.equal(leon.fullName, 'Leon Ban');
     assert.ok(leon.checkedInAt, 'evidencija dolaska ostaje');
     assert.equal(renamed.body.invitation.guests.length, 3);
-    assert.equal(renamed.body.invitation.organization, 'Podravka');
+    assert.equal(renamed.body.invitation.email, 'ema@primjer.hr');
+    assert.equal(renamed.body.invitation.organization, undefined, 'organizacija se više ne koristi');
 
     const remove = await a.put(`/api/admin/invitations/${inv.id}`).send({ companions: [] });
     assert.equal(remove.status, 409);
@@ -245,19 +246,18 @@ describe('administracija popisa', () => {
     const ctx = setup();
     const a = await ctx.admin();
     const res = await a.post('/api/admin/invitations/bulk').send({
-      text: 'Ivan Ivić; Ina d.d.; Gospodarstvo; ivan@ina.hr\nAna Marija Kovač\tHRT\tMediji\nSamoime\nPetar Perić; ; ; krivi-email',
-      groupName: 'Ostalo',
+      text: 'Ivan Ivić; ivan@ina.hr\nAna Marija Kovač\tana@hrt.hr\nSamoime\nPetar Perić; krivi-email',
       confirm: false,
     });
     assert.equal(res.status, 201);
     assert.equal(res.body.created.length, 2);
     assert.deepEqual(res.body.errors.map((e) => e.line), [3, 4]);
     const [ivan, ana] = res.body.created;
-    assert.equal(ivan.organization, 'Ina d.d.');
     assert.equal(ivan.email, 'ivan@ina.hr');
     assert.equal(ana.firstName, 'Ana Marija');
     assert.equal(ana.lastName, 'Kovač');
-    assert.equal(ana.groupName, 'Mediji');
+    assert.equal(ana.email, 'ana@hrt.hr', 'e-mail iz Excela (tabulator)');
+    assert.equal(ivan.groupName, undefined, 'grupa se više ne koristi');
     assert.equal(ivan.status, 'pending');
   });
 

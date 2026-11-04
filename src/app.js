@@ -211,7 +211,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
     res.status(201).json({ invitation: inv });
   });
 
-  // Skupni unos: jedan uzvanik po retku "Ime Prezime; Organizacija; Grupa; e-mail".
+  // Skupni unos: jedan uzvanik po retku "Ime Prezime" ili "Ime Prezime; e-mail".
   app.post('/api/admin/invitations/bulk', admin, (req, res) => {
     const lines = String(req.body?.text || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     if (!lines.length) throw new AppError(400, 'validation', 'Upišite barem jednog uzvanika.');
@@ -219,7 +219,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
     const created = [];
     const errors = [];
     lines.forEach((line, i) => {
-      const [name = '', organization = '', groupName = '', email = ''] = line.split(/[;\t]/).map((p) => p.trim());
+      const [name = '', email = ''] = line.split(/[;\t]/).map((p) => p.trim());
       const parts = name.split(/\s+/).filter(Boolean);
       const firstName = parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0] || '';
       const lastName = parts.length > 1 ? parts[parts.length - 1] : '';
@@ -227,7 +227,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
         created.push(
           store.createInvitation(
             db,
-            { firstName, lastName, organization, groupName: groupName || req.body?.groupName, email, maxCompanions: req.body?.maxCompanions, confirm: Boolean(req.body?.confirm) },
+            { firstName, lastName, email, maxCompanions: req.body?.maxCompanions, confirm: Boolean(req.body?.confirm) },
             { source: req.body?.confirm ? 'admin' : 'invite' },
           ),
         );

@@ -5,16 +5,16 @@ import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { PNG } from 'pngjs';
 import { setup, binary } from './helpers.js';
-import { personRows, groupRows } from '../src/export.js';
+import { personRows } from '../src/export.js';
 import { listInvitations } from '../src/store.js';
 
 async function seeded() {
   const ctx = setup();
   const a = await ctx.admin();
   const add = (body) => a.post('/api/admin/invitations').send(body).then((r) => r.body.invitation);
-  const ivan = await add({ firstName: 'Ivan', lastName: 'Horvat', organization: 'Končar', groupName: 'Dobitnici', confirm: true, companions: [{ firstName: 'Ana', lastName: 'Horvat' }] });
-  await add({ firstName: 'Željka', lastName: 'Šimić', groupName: 'Mediji', confirm: true });
-  const dec = await add({ firstName: 'Đuro', lastName: 'Čačić', groupName: 'Dobitnici' });
+  const ivan = await add({ firstName: 'Ivan', lastName: 'Horvat', confirm: true, companions: [{ firstName: 'Ana', lastName: 'Horvat' }] });
+  await add({ firstName: 'Željka', lastName: 'Šimić', confirm: true });
+  const dec = await add({ firstName: 'Đuro', lastName: 'Čačić' });
   await ctx.anon().post(`/api/invite/${dec.token}/respond`).send({ attending: false });
   await add({ firstName: 'Pero', lastName: 'Perić' });
   const m = await ctx.moderator();
@@ -35,16 +35,15 @@ describe('izvoz', () => {
     assert.equal(rows.length, 3);
   });
 
-  test('filtri statusa i grupiranje po grupi', () => {
+  test('filtri statusa', () => {
     const inv = listInvitations(ctx.db);
     assert.deepEqual(personRows(inv, 'declined').map((r) => r.name), ['Đuro Čačić']);
     assert.deepEqual(personRows(inv, 'pending').map((r) => r.name), ['Pero Perić']);
     assert.deepEqual(personRows(inv, 'checked_in').map((r) => r.name), ['Ivan Horvat', 'Ana Horvat – pratnja']);
-    const groups = groupRows(personRows(inv, 'all'));
-    assert.deepEqual(groups.map((g) => g.name), ['Dobitnici', 'Mediji', 'Bez grupe']);
+    assert.ok(personRows(inv, 'all').every((r) => !('organization' in r) && !('groupName' in r)), 'nema organizacije ni grupe');
   });
 
-  test('Excel: listovi po statusu, grupe i hrvatski znakovi', async () => {
+  test('Excel: listovi po statusu, bez grupa, s hrvatskim znakovima', async () => {
     const res = await a.get('/api/admin/export.xlsx?filter=all').buffer(true).parse(binary);
     assert.equal(res.status, 200);
     assert.match(res.headers['content-disposition'], /zlatna-kuna-31-all-.*\.xlsx/);
@@ -56,9 +55,9 @@ describe('izvoz', () => {
       wb.getWorksheet(name).eachRow((row) => out.push(row.getCell(2).value));
       return out;
     };
-    assert.deepEqual(values('Dolaze'), ['Ime i prezime', 'Dobitnici (2)', 'Ivan Horvat', 'Ana Horvat – pratnja', 'Mediji (1)', 'Željka Šimić']);
-    assert.deepEqual(values('Ne dolaze'), ['Ime i prezime', 'Dobitnici (1)', 'Đuro Čačić']);
-    assert.deepEqual(values('Došli (skenirani)'), ['Ime i prezime', 'Dobitnici (2)', 'Ivan Horvat', 'Ana Horvat – pratnja']);
+    assert.deepEqual(values('Dolaze'), ['Ime i prezime', 'Ivan Horvat', 'Ana Horvat – pratnja', 'Željka Šimić']);
+    assert.deepEqual(values('Ne dolaze'), ['Ime i prezime', 'Đuro Čačić']);
+    assert.deepEqual(values('Došli (skenirani)'), ['Ime i prezime', 'Ivan Horvat', 'Ana Horvat – pratnja']);
   });
 
   test('Excel s filtrom ima samo jedan list', async () => {
@@ -81,7 +80,7 @@ describe('izvoz', () => {
   test('PDF s puno uzvanika ima više stranica', async () => {
     const big = setup();
     const ad = await big.admin();
-    const text = Array.from({ length: 120 }, (_, i) => `Gost${i} Prezime${i}; Tvrtka ${i}; Grupa ${i % 4}`).join('\n');
+    const text = Array.from({ length: 120 }, (_, i) => `Gost${i} Prezime${i}`).join('\n');
     await ad.post('/api/admin/invitations/bulk').send({ text, confirm: true });
     const res = await ad.get('/api/admin/export.pdf?filter=all').buffer(true).parse(binary);
     const pages = (res.body.toString('latin1').match(/\/Type \/Page\b/g) || []).length;

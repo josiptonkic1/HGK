@@ -33,7 +33,6 @@ async function loadList({ silent = false } = {}) {
     renderStats();
     renderList();
     renderScanResults();
-    renderGroups();
     renderCheckinLog();
   } catch (err) {
     if (err.status === 401) return location.replace('/prijava');
@@ -61,7 +60,7 @@ function selectTab(name) {
 // ---------- pretraga ----------
 
 function searchText(inv) {
-  return normalize([inv.fullName, inv.organization, inv.groupName, inv.email, ...inv.guests.map((g) => g.fullName)].join(' '));
+  return normalize([inv.fullName, inv.email, ...inv.guests.map((g) => g.fullName)].join(' '));
 }
 
 function matches(inv, query) {
@@ -76,7 +75,8 @@ function matches(inv, query) {
 function renderStats() {
   const s = stats;
   const cards = [
-    ['all', s.invitations, 'Pozvano', 'pozivnica'],
+    // Pozivnice u bazi: admin ih dodaje ili ih stvara prijava preko općeg linka.
+    ['all', s.invitations, 'Pozivnica u bazi', `${invitations.filter((i) => i.source !== 'open').length} dodao admin · ${invitations.filter((i) => i.source === 'open').length} preko općeg linka`],
     ['confirmed', s.confirmedPersons, 'Dolazi osoba', `${s.confirmedInvitations} pozivnica, ${s.companions} pratnje`],
     ['declined', s.declinedInvitations, 'Ne dolazi', 'pozivnica'],
     ['pending', s.pendingInvitations, 'Nisu odgovorili', 'pozivnica'],
@@ -88,20 +88,10 @@ function renderStats() {
     .join('');
 }
 
-function renderGroups() {
-  const groups = [...new Set(invitations.map((i) => i.groupName).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'hr'));
-  const sel = $('#list-group');
-  const current = sel.value;
-  sel.innerHTML = '<option value="">Sve grupe</option>' + groups.map((g) => `<option${g === current ? ' selected' : ''}>${esc(g)}</option>`).join('');
-  $('#groups').innerHTML = groups.map((g) => `<option value="${esc(g)}">`).join('');
-}
-
 function filtered() {
   const f = $('#list-filter').value;
-  const g = $('#list-group').value;
   const q = $('#list-search').value;
   return invitations.filter((inv) => {
-    if (g && inv.groupName !== g) return false;
     if (f === 'checked_in' && !inv.checkedInCount) return false;
     if (f === 'not_arrived' && !(inv.status === 'confirmed' && inv.checkedInCount < inv.personCount)) return false;
     if (['confirmed', 'declined', 'pending'].includes(f) && inv.status !== f) return false;
@@ -114,7 +104,7 @@ function renderList() {
   const persons = rows.reduce((a, i) => a + i.personCount, 0);
   $('#list-count').textContent = `Prikazano: ${rows.length} ${plural(rows.length, 'pozivnica', 'pozivnice', 'pozivnica')} · ${persons} ${plural(persons, 'osoba', 'osobe', 'osoba')}`;
   if (!rows.length) {
-    $('#list-body').innerHTML = `<tr><td colspan="5" class="empty">Nema uzvanika za odabrani prikaz.</td></tr>`;
+    $('#list-body').innerHTML = `<tr><td colspan="4" class="empty">Nema uzvanika za odabrani prikaz.</td></tr>`;
     return;
   }
   $('#list-body').innerHTML = rows
@@ -125,7 +115,6 @@ function renderList() {
       return `<tr data-id="${inv.id}">
         <td><div class="main-name">${esc(inv.fullName)}${dot(primary)}</div>
           ${comps.map((c) => `<div class="comp-name">${esc(companionLabel(c.fullName))}${dot(c)}</div>`).join('')}</td>
-        <td>${esc(inv.organization) || '<span class="hint">—</span>'}${inv.groupName ? `<div class="hint">${esc(inv.groupName)}</div>` : ''}</td>
         <td>${badge(inv.status)}</td>
         <td>${inv.status === 'confirmed' ? `${inv.checkedInCount}/${inv.personCount}` : '—'}</td>
         <td><div class="row-actions">
@@ -197,7 +186,7 @@ function openParty(inv, { fromScan = false } = {}) {
   const modal = openModal(`
     ${scanHead}
     <div class="modal-head"><h2>${esc(inv.fullName)}</h2><button class="btn btn-outline btn-icon" data-close aria-label="Zatvori">✕</button></div>
-    <div class="meta">${[inv.organization, inv.groupName].filter(Boolean).map(esc).join(' · ') || '&nbsp;'} ${badge(inv.status)}</div>
+    <div class="meta">${badge(inv.status)}</div>
     ${banner}
     <ul class="guest-checks">
       ${people.map((g) => `<li class="${g.checkedInAt ? 'done' : ''}">
@@ -289,11 +278,10 @@ function renderCheckinLog() {
           <td>${fmtTime(g.checkedInAt)}</td>
           <td>${g.isCompanion ? esc(companionLabel(g.fullName)) : `<strong>${esc(g.fullName)}</strong>`}</td>
           <td>${g.isCompanion ? esc(inv.fullName) : '<span class="hint">—</span>'}</td>
-          <td>${esc(inv.organization) || '<span class="hint">—</span>'}</td>
           <td>${esc(g.checkedInBy || '')}</td>
         </tr>`)
         .join('')
-    : `<tr><td colspan="5" class="empty">Još nitko nije preuzeo pozivnicu.</td></tr>`;
+    : `<tr><td colspan="4" class="empty">Još nitko nije preuzeo pozivnicu.</td></tr>`;
 }
 
 // ---------- skeniranje ----------
@@ -380,7 +368,7 @@ function renderScanResults() {
           const match = comp.find((c) => normalize(c.fullName).includes(normalize(q)));
           return `<li><button type="button" data-id="${inv.id}">
             <span><strong>${esc(inv.fullName)}</strong>
-              <span class="sub">${match ? `<br>${esc(companionLabel(match.fullName))}` : comp.length ? `<br>+ ${comp.length} pratnja` : ''}${inv.organization ? `<br>${esc(inv.organization)}` : ''}</span></span>
+              <span class="sub">${match ? `<br>${esc(companionLabel(match.fullName))}` : comp.length ? `<br>+ ${comp.length} pratnja` : ''}</span></span>
             <span>${badge(inv.status)}${inv.checkedInCount ? `<br><span class="sub">došlo ${inv.checkedInCount}/${inv.personCount}</span>` : ''}</span>
           </button></li>`;
         })
@@ -398,10 +386,6 @@ function openEdit(inv) {
       <div class="row">
         <div class="field"><label for="e-first">Ime</label><input type="text" id="e-first" value="${esc(inv.firstName)}" maxlength="80"></div>
         <div class="field"><label for="e-last">Prezime</label><input type="text" id="e-last" value="${esc(inv.lastName)}" maxlength="80"></div>
-      </div>
-      <div class="row">
-        <div class="field"><label for="e-org">Organizacija</label><input type="text" id="e-org" value="${esc(inv.organization)}" maxlength="160"></div>
-        <div class="field"><label for="e-group">Grupa</label><input type="text" id="e-group" value="${esc(inv.groupName)}" list="groups" maxlength="80"></div>
       </div>
       <div class="row">
         <div class="field"><label for="e-email">E-mail</label><input type="email" id="e-email" value="${esc(inv.email)}" maxlength="160"></div>
@@ -436,8 +420,6 @@ function openEdit(inv) {
         body: {
           firstName: $('#e-first', modal).value,
           lastName: $('#e-last', modal).value,
-          organization: $('#e-org', modal).value,
-          groupName: $('#e-group', modal).value,
           email: $('#e-email', modal).value,
           maxCompanions: $('#e-max', modal).value,
           status: $('#e-status', modal).value,
@@ -483,8 +465,6 @@ function setupAdd() {
         body: {
           firstName: $('#a-first').value,
           lastName: $('#a-last').value,
-          organization: $('#a-org').value,
-          groupName: $('#a-group').value,
           email: $('#a-email').value,
           maxCompanions: $('#a-max').value,
           companions: addEditor.values().filter((c) => c.firstName || c.lastName),
@@ -512,7 +492,7 @@ function setupAdd() {
     try {
       const res = await api('/api/admin/invitations/bulk', {
         method: 'POST',
-        body: { text: $('#b-text').value, groupName: $('#b-group').value, maxCompanions: $('#b-max').value || undefined, confirm: $('#b-confirm').checked },
+        body: { text: $('#b-text').value, maxCompanions: $('#b-max').value || undefined, confirm: $('#b-confirm').checked },
       });
       out.innerHTML = renderBulk(res);
       if (res.created.length) $('#b-text').value = res.errors.map((x) => x.text).join('\n');
@@ -655,7 +635,7 @@ async function init() {
     if (b) openParty(invitations.find((i) => i.id === Number(b.dataset.id)));
   });
 
-  for (const id of ['#list-search', '#list-filter', '#list-group']) $(id).addEventListener('input', () => { renderList(); renderStats(); });
+  for (const id of ['#list-search', '#list-filter']) $(id).addEventListener('input', () => { renderList(); renderStats(); });
   $('#btn-refresh').addEventListener('click', () => loadList());
   $('#stats').addEventListener('click', (e) => {
     const b = e.target.closest('[data-filter]');

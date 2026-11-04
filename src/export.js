@@ -17,7 +17,6 @@ export const FILTERS = {
 };
 const SECTION_ORDER = ['confirmed', 'declined', 'pending', 'checked_in'];
 const STATUS_LABEL = { confirmed: 'Dolazi', declined: 'Ne dolazi', pending: 'Nije odgovorio' };
-const NO_GROUP = 'Bez grupe';
 
 const fmt = new Intl.DateTimeFormat('hr-HR', {
   timeZone: 'Europe/Zagreb', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -42,8 +41,6 @@ export function personRows(invitations, filter = 'all') {
         name: p.isCompanion ? companionLabel(p.fullName) : p.fullName,
         isCompanion: p.isCompanion,
         host: p.isCompanion ? inv.fullName : '',
-        organization: inv.organization,
-        groupName: inv.groupName || NO_GROUP,
         email: p.isCompanion ? '' : inv.email,
         status: STATUS_LABEL[inv.status],
         checkedIn: p.checkedInAt ? 'Da' : 'Ne',
@@ -56,24 +53,12 @@ export function personRows(invitations, filter = 'all') {
   return rows;
 }
 
-// Grupira retke po grupi uzvanika (abecedno, "Bez grupe" na kraju), redoslijed unutar grupe ostaje isti.
-export function groupRows(rows) {
-  const map = new Map();
-  for (const r of rows) {
-    if (!map.has(r.groupName)) map.set(r.groupName, []);
-    map.get(r.groupName).push(r);
-  }
-  return [...map.entries()]
-    .sort(([a], [b]) => (a === NO_GROUP) - (b === NO_GROUP) || a.localeCompare(b, 'hr'))
-    .map(([name, items]) => ({ name, items }));
-}
-
 const sectionsFor = (filter) => (filter === 'all' ? ['all', ...SECTION_ORDER] : [filter]);
 
 function summaryLines(invitations) {
   const s = computeStats(invitations);
   return [
-    ['Pozvano (pozivnica)', s.invitations],
+    ['Pozivnica u bazi', s.invitations],
     ['Dolaze – pozivnica / osoba', `${s.confirmedInvitations} / ${s.confirmedPersons}`],
     ['od toga pratnja', s.companions],
     ['Ne dolaze', s.declinedInvitations],
@@ -88,8 +73,6 @@ const COLUMNS = [
   { header: 'Rb.', key: 'rb', width: 6 },
   { header: 'Ime i prezime', key: 'name', width: 34 },
   { header: 'Pratnja od', key: 'host', width: 26 },
-  { header: 'Organizacija', key: 'organization', width: 30 },
-  { header: 'Grupa', key: 'groupName', width: 18 },
   { header: 'E-mail', key: 'email', width: 28 },
   { header: 'Status', key: 'status', width: 15 },
   { header: 'Odgovor', key: 'respondedAt', width: 18 },
@@ -115,7 +98,7 @@ export async function buildXlsx(invitations, filter = 'all') {
   for (const key of sectionsFor(filter)) {
     const ws = wb.addWorksheet(FILTERS[key].replace(/[\\/?*[\]:]/g, ''), {
       views: [{ state: 'frozen', ySplit: 1 }],
-      properties: { outlineLevelRow: 2 },
+      properties: { outlineLevelRow: 1 },
     });
     ws.columns = COLUMNS;
     const header = ws.getRow(1);
@@ -124,17 +107,14 @@ export async function buildXlsx(invitations, filter = 'all') {
     ws.properties.outlineProperties = { summaryBelow: false };
 
     let rb = 0;
-    for (const group of groupRows(personRows(invitations, key))) {
-      const gRow = ws.addRow({ name: `${group.name} (${group.items.length})` });
-      gRow.font = { bold: true };
-      gRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E6C4' } };
-      for (const r of group.items) {
-        const row = ws.addRow({ ...r, rb: ++rb });
-        row.outlineLevel = r.isCompanion ? 2 : 1;
-        if (r.isCompanion) row.getCell('name').font = { italic: true };
+    for (const r of personRows(invitations, key)) {
+      const row = ws.addRow({ ...r, rb: ++rb });
+      if (r.isCompanion) {
+        row.outlineLevel = 1; // pratnja se može sklopiti ispod nositelja
+        row.getCell('name').font = { italic: true };
       }
     }
-    ws.autoFilter = { from: 'A1', to: `K1` };
+    ws.autoFilter = { from: 'A1', to: 'I1' };
   }
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
@@ -143,11 +123,10 @@ export async function buildXlsx(invitations, filter = 'all') {
 
 const PDF_COLS = [
   { key: 'rb', label: 'Rb.', width: 32 },
-  { key: 'name', label: 'Ime i prezime', width: 200 },
-  { key: 'host', label: 'Pratnja od', width: 150 },
-  { key: 'organization', label: 'Organizacija', width: 170 },
-  { key: 'status', label: 'Status', width: 80 },
-  { key: 'checkedInAt', label: 'Dolazak', width: 100 },
+  { key: 'name', label: 'Ime i prezime', width: 250 },
+  { key: 'host', label: 'Pratnja od', width: 210 },
+  { key: 'status', label: 'Status', width: 120 },
+  { key: 'checkedInAt', label: 'Dolazak', width: 140 },
 ];
 
 export function buildPdf(invitations, filter = 'all') {
@@ -205,12 +184,8 @@ export function buildPdf(invitations, filter = 'all') {
     }
     drawHeader();
     let rb = 0;
-    for (const group of groupRows(rows)) {
-      ensureSpace(34, true);
-      doc.font('bold').fontSize(9.5).fillColor(GOLD).text(`${group.name} (${group.items.length})`, left + 3, doc.y + 2);
-      doc.fillColor('#000');
-      doc.y += 3;
-      for (const r of group.items) {
+    {
+      for (const r of rows) {
         const cells = { ...r, rb: String(++rb) };
         doc.font('regular').fontSize(8.5);
         const h = Math.max(...PDF_COLS.map((c) => doc.heightOfString(String(cells[c.key] ?? ''), { width: c.width - 6 }))) + 5;

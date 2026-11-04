@@ -113,8 +113,6 @@ function serialize(inv, guests) {
     lastName: inv.last_name,
     fullName: `${inv.first_name} ${inv.last_name}`.trim(),
     email: inv.email,
-    organization: inv.organization,
-    groupName: inv.group_name,
     maxCompanions: inv.max_companions,
     status: inv.status,
     source: inv.source,
@@ -204,7 +202,7 @@ export function createInvitation(db, input, { source = 'invite' } = {}) {
       )
       .run(
         newToken(16), newToken(12), firstName, lastName,
-        cleanEmail(input.email), cleanText(input.organization, 160), cleanText(input.groupName, 80),
+        cleanEmail(input.email), '', '', // organizacija i grupa se više ne koriste
         effectiveMax, confirm ? 'confirmed' : 'pending', source, cleanText(input.note, 500),
         confirm ? ts : null, ts,
       );
@@ -255,13 +253,11 @@ export function updateInvitation(db, id, input) {
 
   return tx(db, () => {
     db.prepare(
-      `UPDATE invitations SET first_name = ?, last_name = ?, email = ?, organization = ?, group_name = ?, max_companions = ?,
+      `UPDATE invitations SET first_name = ?, last_name = ?, email = ?, max_companions = ?,
          status = ?, note = ?, responded_at = ? WHERE id = ?`,
     ).run(
       firstName, lastName,
       'email' in input ? cleanEmail(input.email) : inv.email,
-      'organization' in input ? cleanText(input.organization, 160) : inv.organization,
-      'groupName' in input ? cleanText(input.groupName, 80) : inv.groupName,
       maxCompanions, status,
       'note' in input ? cleanText(input.note, 500) : inv.note,
       status !== inv.status ? (status === 'pending' ? null : now()) : inv.respondedAt,
