@@ -18,18 +18,11 @@
   $('#logo').innerHTML =
     '<div class="zk-logo" role="img" aria-label="' + esc(E.title) + '">' +
     '<span class="num" aria-hidden="true">' + esc(E.edition) + '</span>' +
-    '<span class="word" aria-hidden="true">ZLATNA<br>KUNA</span><span class="dust" aria-hidden="true"></span></div>';
-  (function dust() {
-    var html = '';
-    for (var i = 0; i < 70; i++) {
-      var t = Math.random();
-      html += '<i style="left:' + (-8 + t * 116 + (Math.random() - 0.5) * 18).toFixed(1) + '%;top:' +
-        (4 + (1 - t) * 30 + Math.random() * 22).toFixed(1) + '%;--s:' + (Math.random() * 2.6 + 0.8).toFixed(1) +
-        'px;--d:' + (2 + Math.random() * 3).toFixed(1) + 's;--delay:' + (Math.random() * 3).toFixed(1) +
-        's;--o:' + (0.4 + Math.random() * 0.6).toFixed(2) + '"></i>';
-    }
-    $('.zk-logo .dust').innerHTML = html;
-  })();
+    '<span class="word" aria-hidden="true">ZLATNA<br>KUNA</span></div>';
+  // Zlatna kuna od čestica (kuna.js); pričeka fontove da logo ima konačnu veličinu.
+  var startMarten = function () { if (window.startGoldenMarten) window.startGoldenMarten($('.zk-logo')); };
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(startMarten);
+  else startMarten();
   $('#letter').innerHTML =
     '<p>' + esc(E.greeting) + '<br>' + rich(E.intro) + '</p><p>' + esc(E.closing) + '</p>' +
     '<p class="sign">' + esc(E.signatureName) + '<br>' + esc(E.signatureTitle) + '</p>';
