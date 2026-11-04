@@ -347,3 +347,8 @@ body.staff { background: var(--bg-2); min-height: 100vh; }
   body.invite { background: #fff; color: #000; }
   .no-print { display: none !important; }
 }
+
+/* Zlatna kuna od čestica (kuna.js) - preko loga, slova ispred */
+.invite-card { overflow-x: clip; }
+.kuna-canvas { position: absolute; left: -20%; width: 140%; top: 0; height: 100%; pointer-events: none; z-index: 1; }
+.zk-logo .num, .zk-logo .word { position: relative; z-index: 3; }

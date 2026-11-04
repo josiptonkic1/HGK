@@ -62,12 +62,12 @@ export async function api(path, { method = 'GET', body } = {}) {
 // Tekst s **podebljanim** dijelovima -> sigurni HTML.
 export const richText = (text) => esc(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
-export function logoHtml({ small = false, edition = '31.' } = {}) {
+export function logoHtml({ small = false, edition = '31.', dust = true } = {}) {
   const num = esc(edition.replace('.', ''));
   return `<div class="zk-logo${small ? ' small' : ''}" role="img" aria-label="${esc(edition)} Zlatna kuna">
     <span class="num" aria-hidden="true">${num}.</span>
     <span class="word" aria-hidden="true">ZLATNA<br>KUNA</span>
-    ${small ? '' : '<span class="dust" aria-hidden="true"></span>'}
+    ${small || !dust ? '' : '<span class="dust" aria-hidden="true"></span>'}
   </div>`;
 }
 

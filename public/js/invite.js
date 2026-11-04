@@ -1,4 +1,4 @@
-import { $, api, esc, richText, logoHtml, sprinkleDust, companionEditor, companionLabel, copyText } from './common.js';
+import { $, api, esc, richText, logoHtml, companionEditor, companionLabel, copyText } from './common.js';
 
 const personalToken = location.pathname.startsWith('/p/') ? decodeURIComponent(location.pathname.slice(3)) : null;
 const STORAGE_KEY = 'zk31_token';
@@ -25,8 +25,11 @@ function remembered() {
 }
 
 function renderStatic() {
-  $('#logo').innerHTML = logoHtml({ edition: event.edition });
-  sprinkleDust();
+  $('#logo').innerHTML = logoHtml({ edition: event.edition, dust: false });
+  // Zlatna kuna od čestica (kuna.js) - pričeka fontove da logo ima konačnu veličinu
+  const marten = () => window.startGoldenMarten?.($('.zk-logo'));
+  if (document.fonts?.ready) document.fonts.ready.then(marten);
+  else marten();
   $('#letter').innerHTML = `
     <p>${esc(event.greeting)}<br>${richText(event.intro)}</p>
     <p>${esc(event.closing)}</p>
