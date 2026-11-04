@@ -31,6 +31,21 @@ Web aplikacija za HGK: uzvanici kroz link pozivnice potvrđuju dolazak (s pratnj
 
 Oba se automatski grade i objavljuju (`.github/workflows/release.yml`) pri svakoj promjeni na grani `main`.
 
+## Web aplikacija online (Render)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/josiptonkic1/HGK)
+
+1. Kliknite gumb iznad (ili otvorite https://render.com/deploy?repo=https://github.com/josiptonkic1/HGK) i prijavite se na Render preko GitHub računa.
+2. Potvrdite s **Apply**. Render sam postavi aplikaciju prema `render.yaml` i generira lozinke.
+3. Nakon nekoliko minuta aplikacija je dostupna na adresi oblika `https://zlatna-kuna-xxxx.onrender.com`:
+   - `/pozivnica` – opći link pozivnice za uzvanike,
+   - `/prijava` – prijava za admina i moderatora.
+4. Lozinke za `admin` i `moderator` nalaze se na Renderu: servis **zlatna-kuna → Environment** (`ADMIN_PASSWORD`, `MODERATOR_PASSWORD`).
+
+Ta adresa se upisuje i u Android aplikaciju.
+
+> **Besplatni paket je za probu:** aplikacija se nakon ~15 minuta bez posjeta uspava (prvo otvaranje traje ~1 min), a baza se pri ponovnom pokretanju briše. Za pravi događaj u `render.yaml` stavite `plan: starter` i uključite trajni disk, ili aplikaciju postavite na HGK-ov server (Docker).
+
 ## Pokretanje
 
 Potreban je Node.js 22.13 ili noviji (koristi ugrađeni SQLite, bez dodatne baze).

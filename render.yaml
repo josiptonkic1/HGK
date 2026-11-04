@@ -1,0 +1,42 @@
+# Postavljanje web aplikacije na Render (https://render.com) jednim klikom:
+#   https://render.com/deploy?repo=https://github.com/josiptonkic1/HGK
+#
+# Besplatni paket (plan: free) je za PROBU: nakon ~15 min bez posjeta aplikacija se uspava,
+# a pri ponovnom pokretanju baza se briše (uzvanici i prijave nestaju).
+# Za pravi događaj: plan "starter" + trajni disk (odkomentirajte "disk" niže).
+services:
+  - type: web
+    name: zlatna-kuna
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci --omit=dev
+    startCommand: node --disable-warning=ExperimentalWarning index.js
+    healthCheckPath: /api/event
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_FILE
+        value: ./data/zlatna-kuna.db
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: TRUST_PROXY
+        value: "1"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: MODERATOR_USERNAME
+        value: moderator
+      - key: MODERATOR_PASSWORD
+        generateValue: true
+    # Trajna baza (samo na plaćenom planu, npr. plan: starter):
+    # disk:
+    #   name: data
+    #   mountPath: /opt/render/project/src/data
+    #   sizeGB: 1

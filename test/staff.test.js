@@ -4,6 +4,23 @@ import { setup, ADMIN } from './helpers.js';
 import { openDb } from '../src/db.js';
 import { ensureSeedUsers, authenticate, listUsers } from '../src/store.js';
 
+describe('hosting iza HTTPS proxyja (Render)', () => {
+  test('prijava postavlja sigurni kolačić kad proxy javlja HTTPS', async () => {
+    const { createApp } = await import('../src/app.js');
+    const { createUser } = await import('../src/store.js');
+    const request = (await import('supertest')).default;
+    const db = openDb(':memory:');
+    createUser(db, { username: 'admin', password: 'admin-lozinka-1', role: 'admin' });
+    const app = createApp({ db, sessionSecret: 'test-secret-0123456789abcdef', secureCookies: true, trustProxy: 1 });
+    const agent = request.agent(app);
+    const res = await agent.post('/api/auth/login').set('X-Forwarded-Proto', 'https').send({ username: 'admin', password: 'admin-lozinka-1' });
+    assert.equal(res.status, 200);
+    const cookie = res.headers['set-cookie'].join(';');
+    assert.match(cookie, /Secure/i);
+    assert.match(cookie, /HttpOnly/i);
+  });
+});
+
 describe('početni korisnici iz .env', () => {
   test('kreiraju se admin i moderator, ali samo jednom po ulozi', () => {
     const db = openDb(':memory:');
