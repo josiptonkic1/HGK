@@ -1,5 +1,29 @@
 // Zajedničke pomoćne funkcije za sve stranice.
 
+// Web aplikacija (PWA): service worker omogućuje instalaciju na mobitel / računalo.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
+
+// Gumb "Instaliraj aplikaciju" - preglednik javlja kad je instalacija moguća.
+let installEvent = null;
+export function setupInstallButton(button) {
+  if (!button) return;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    installEvent = e;
+    button.hidden = false;
+  });
+  window.addEventListener('appinstalled', () => (button.hidden = true));
+  button.addEventListener('click', async () => {
+    if (!installEvent) return;
+    installEvent.prompt();
+    await installEvent.userChoice.catch(() => {});
+    installEvent = null;
+    button.hidden = true;
+  });
+}
+
 export function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }

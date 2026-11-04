@@ -6,3 +6,5 @@ data/
 *.db-wal
 .DS_Store
 Thumbs.db
+PRISTUPNI-PODACI.txt
+dist/

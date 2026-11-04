@@ -387,8 +387,14 @@ export function deleteUser(db, id, currentUserId) {
   db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
 }
 
-export function ensureAdmin(db, { username, password }) {
-  const count = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
-  if (count > 0 || !username || !password) return null;
-  return createUser(db, { username, password, name: 'Administrator', role: 'admin' });
+// Početni korisnici iz .env: kreiraju se samo ako još ne postoji nijedan korisnik te uloge.
+export function ensureSeedUsers(db, seeds) {
+  const created = [];
+  for (const { username, password, name, role } of seeds) {
+    if (!username || !password) continue;
+    const exists = db.prepare('SELECT COUNT(*) AS n FROM users WHERE role = ?').get(role).n > 0;
+    if (exists) continue;
+    created.push(createUser(db, { username, password, name, role }));
+  }
+  return created;
 }

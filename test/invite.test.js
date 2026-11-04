@@ -16,6 +16,26 @@ describe('pozivnica (gost)', () => {
     assert.equal((await anon().get('/css/style.css')).status, 200);
   });
 
+  test('web aplikacija (PWA): manifest, service worker i ikone', async () => {
+    const { anon } = setup();
+    const manifest = await anon().get('/manifest.webmanifest');
+    assert.equal(manifest.status, 200);
+    const m = JSON.parse(manifest.text);
+    assert.equal(m.display, 'standalone');
+    assert.equal(m.start_url, '/staff');
+    for (const icon of m.icons) {
+      const res = await anon().get(icon.src);
+      assert.equal(res.status, 200, icon.src);
+      assert.equal(res.headers['content-type'], 'image/png');
+    }
+    const sw = await anon().get('/sw.js');
+    assert.equal(sw.status, 200);
+    assert.match(sw.headers['content-type'], /javascript/);
+    assert.match(sw.text, /\/api\//, 'service worker mora preskakati /api');
+    const staff = await anon().get('/staff');
+    assert.match(staff.text, /rel="manifest"/);
+  });
+
   test('podaci o događaju sadrže 31. Zlatnu kunu', async () => {
     const { anon } = setup();
     const res = await anon().get('/api/event');

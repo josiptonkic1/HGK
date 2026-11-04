@@ -28,13 +28,33 @@ Web aplikacija za HGK: uzvanici kroz link pozivnice potvrđuju dolazak (s pratnj
 
 Potreban je Node.js 22.13 ili noviji (koristi ugrađeni SQLite, bez dodatne baze).
 
+**Windows (najjednostavnije):** dvoklik na `start.bat`. Skripta instalira pakete ako nedostaju, pokreće aplikaciju i otvara prijavu u pregledniku.
+
+**Ručno:**
+
 ```bash
 npm install
-cp .env.example .env    # pa upišite SESSION_SECRET, ADMIN_USERNAME i ADMIN_PASSWORD
+cp .env.example .env    # pa upišite SESSION_SECRET te lozinke za admina i moderatora
 npm start               # http://localhost:3000
 ```
 
-Prvi administrator se kreira iz `ADMIN_USERNAME` i `ADMIN_PASSWORD` pri prvom pokretanju (samo dok je baza prazna). Ostale korisnike dodajete u aplikaciji, pod „Postavke i korisnici”.
+Početni administrator (`ADMIN_USERNAME` / `ADMIN_PASSWORD`) i moderator (`MODERATOR_USERNAME` / `MODERATOR_PASSWORD`) kreiraju se pri pokretanju, ako u bazi još nema korisnika te uloge. Ostale korisnike dodajete u aplikaciji, pod „Postavke i korisnici”.
+
+**Paket za preuzimanje:** `dist/zlatna-kuna-31.zip` sadrži sve, uključujući instalirane pakete. Raspakirajte ga i pokrenite `start.bat`.
+
+## Skeniranje na ulazu
+
+1. Moderator skenira QR kod. Prikazuje se „QR kod uspješno skeniran” s imenom i prezimenom uzvanika i njegovom pratnjom.
+2. **Preuzeo pozivnicu:** dolazak se sprema i vidi se u tablici „Preuzete pozivnice” (vrijeme, osoba, pratnja od, moderator).
+3. **Odustani:** prebacuje na ručni pregled popisa uzvanika, s kursorom u polju za pretragu.
+
+## Web aplikacija (instalacija na mobitel)
+
+Aplikacija je PWA i može se instalirati kao obična aplikacija:
+- **Android / Chrome / Edge:** u panelu se pojavi gumb „Instaliraj aplikaciju”, ili u izborniku preglednika odaberite „Instaliraj aplikaciju”.
+- **iPhone (Safari):** Dijeli → „Dodaj na početni zaslon”.
+
+Instalirana aplikacija otvara se izravno na panel za skeniranje. Instalacija i kamera rade samo preko HTTPS-a (ili na `localhost`). Podaci o uzvanicima se ne spremaju na uređaj, nego se uvijek čitaju s poslužitelja.
 
 Testovi: `npm test`
 
@@ -44,6 +64,7 @@ Testovi: `npm test`
 - Iza reverse proxyja (nginx, IIS) postavite `TRUST_PROXY=1` i ostavite `HOST=127.0.0.1`. Bez proxyja postavite `HOST=0.0.0.0`.
 - Baza je jedna datoteka (`DB_FILE`, zadano `./data/zlatna-kuna.db`) i treba je redovito sigurnosno kopirati.
 - Tekst pozivnice (datum, vrijeme, mjesto, napomene) nalazi se u `src/event.js`.
+- Docker: `docker build -t zlatna-kuna .`, zatim `docker run -d -p 3000:3000 -v zk-data:/app/data --env-file .env zlatna-kuna`.
 
 ## Struktura
 

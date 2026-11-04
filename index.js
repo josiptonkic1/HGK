@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { openDb } from './src/db.js';
 import { createApp } from './src/app.js';
-import { ensureAdmin } from './src/store.js';
+import { ensureSeedUsers } from './src/store.js';
 
 const PORT = Number(process.env.PORT || 3000);
 const DB_FILE = process.env.DB_FILE || './data/zlatna-kuna.db';
@@ -13,8 +13,11 @@ if (!sessionSecret) {
 }
 
 const db = openDb(DB_FILE);
-const created = ensureAdmin(db, { username: process.env.ADMIN_USERNAME, password: process.env.ADMIN_PASSWORD });
-if (created) console.log(`Kreiran administrator "${created.username}".`);
+const created = ensureSeedUsers(db, [
+  { username: process.env.ADMIN_USERNAME, password: process.env.ADMIN_PASSWORD, name: 'Administrator', role: 'admin' },
+  { username: process.env.MODERATOR_USERNAME, password: process.env.MODERATOR_PASSWORD, name: 'Moderator', role: 'moderator' },
+]);
+for (const u of created) console.log(`Kreiran korisnik "${u.username}" (${u.role}).`);
 
 const app = createApp({
   db,

@@ -1,6 +1,24 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { setup, ADMIN } from './helpers.js';
+import { openDb } from '../src/db.js';
+import { ensureSeedUsers, authenticate, listUsers } from '../src/store.js';
+
+describe('početni korisnici iz .env', () => {
+  test('kreiraju se admin i moderator, ali samo jednom po ulozi', () => {
+    const db = openDb(':memory:');
+    const seeds = [
+      { username: 'admin', password: 'admin-lozinka-1', name: 'Administrator', role: 'admin' },
+      { username: 'moderator', password: 'mod-lozinka-1', name: 'Moderator', role: 'moderator' },
+    ];
+    assert.equal(ensureSeedUsers(db, seeds).length, 2);
+    assert.equal(authenticate(db, 'admin', 'admin-lozinka-1').role, 'admin');
+    assert.equal(authenticate(db, 'moderator', 'mod-lozinka-1').role, 'moderator');
+    assert.equal(ensureSeedUsers(db, seeds).length, 0, 'ponovno pokretanje ne kreira duplikate');
+    assert.equal(listUsers(db).length, 2);
+    assert.equal(ensureSeedUsers(db, [{ username: '', password: '', role: 'moderator' }]).length, 0);
+  });
+});
 
 describe('prijava i ovlasti', () => {
   test('bez prijave nema pristupa popisu', async () => {

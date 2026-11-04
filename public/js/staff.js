@@ -1,4 +1,6 @@
-import { $, $$, api, esc, logoHtml, fmtDateTime, fmtTime, normalize, toast, copyText, companionEditor, companionLabel } from './common.js';
+import { $, $$, api, esc, logoHtml, fmtDateTime, fmtTime, normalize, toast, copyText, companionEditor, companionLabel, setupInstallButton } from './common.js';
+
+setupInstallButton(document.getElementById('btn-install'));
 
 let user;
 let invitations = [];
@@ -32,6 +34,7 @@ async function loadList({ silent = false } = {}) {
     renderList();
     renderScanResults();
     renderGroups();
+    renderCheckinLog();
   } catch (err) {
     if (err.status === 401) return location.replace('/prijava');
     if (!silent) toast(err.message, { error: true });
@@ -126,7 +129,7 @@ function renderList() {
         <td>${badge(inv.status)}</td>
         <td>${inv.status === 'confirmed' ? `${inv.checkedInCount}/${inv.personCount}` : '—'}</td>
         <td><div class="row-actions">
-          <button class="btn btn-outline btn-sm" data-act="open">${inv.status === 'confirmed' && inv.checkedInCount < inv.personCount ? 'Potvrdi dolazak' : 'Otvori'}</button>
+          <button class="btn btn-outline btn-sm" data-act="open">${inv.status === 'confirmed' && inv.checkedInCount < inv.personCount ? 'Preuzimanje' : 'Otvori'}</button>
           ${isAdmin() ? `<button class="btn btn-outline btn-sm" data-act="edit">Uredi</button>
             <button class="btn btn-ghost btn-sm" data-act="link" title="Kopiraj osobni link pozivnice">Link</button>
             <button class="btn btn-danger btn-sm" data-act="delete">Obriši</button>` : ''}
@@ -159,8 +162,18 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && $('.modal-backdrop')) closeModal();
 });
 
-// Kartica uzvanika: provjera i potvrda dolazka.
-function openParty(inv) {
+// "Odustani" vraća moderatora na ručni pregled popisa uzvanika.
+function goToManualList() {
+  closeModal();
+  selectTab('list');
+  const s = $('#list-search');
+  s.focus();
+  s.select();
+}
+
+// Kartica uzvanika: provjera i potvrda preuzimanja pozivnice.
+// fromScan = otvoreno nakon skeniranja QR koda.
+function openParty(inv, { fromScan = false } = {}) {
   const pending = inv.guests.filter((g) => !g.checkedInAt);
   const allIn = inv.status === 'confirmed' && inv.guests.length > 0 && pending.length === 0;
   let banner;
@@ -168,11 +181,21 @@ function openParty(inv) {
   else if (inv.status === 'pending') banner = `<div class="alert alert-warn"><strong>Uzvanik nije potvrdio dolazak.</strong> Možete ga svejedno evidentirati.</div>`;
   else if (allIn) {
     const last = inv.guests.map((g) => g.checkedInAt).sort().pop();
-    banner = `<div class="alert alert-info"><strong>Dolazak je već evidentiran</strong> (${fmtDateTime(last)}). Ulaznice su već predane.</div>`;
-  } else banner = `<div class="alert alert-ok"><strong>Dolazak potvrđen.</strong> Odaberite osobe koje su došle i predajte ulaznice.</div>`;
+    banner = `<div class="alert alert-info"><strong>Pozivnica je već preuzeta</strong> (${fmtDateTime(last)}). Ulaznice su već predane.</div>`;
+  } else banner = `<div class="alert alert-ok"><strong>Dolazak potvrđen.</strong> Provjerite osobe i predajte ulaznice.</div>`;
 
   const people = inv.guests.length ? inv.guests : [{ id: null, fullName: inv.fullName, isCompanion: false }];
+  const comps = people.filter((g) => g.isCompanion);
+  const scanHead = fromScan
+    ? `<div class="scan-ok" role="status">
+        <div class="scan-ok-icon" aria-hidden="true">✓</div>
+        <div><div class="scan-ok-title">QR kod uspješno skeniran</div>
+          <div class="scan-ok-name">${esc(inv.fullName)}</div>
+          <div class="scan-ok-comp">${comps.length ? comps.map((c) => esc(companionLabel(c.fullName))).join('<br>') : 'bez pratnje'}</div></div>
+      </div>`
+    : '';
   const modal = openModal(`
+    ${scanHead}
     <div class="modal-head"><h2>${esc(inv.fullName)}</h2><button class="btn btn-outline btn-icon" data-close aria-label="Zatvori">✕</button></div>
     <div class="meta">${[inv.organization, inv.groupName].filter(Boolean).map(esc).join(' · ') || '&nbsp;'} ${badge(inv.status)}</div>
     ${banner}
@@ -186,17 +209,19 @@ function openParty(inv) {
     </ul>
     <div class="actions">
       ${allIn ? '' : inv.status === 'confirmed'
-        ? `<button class="btn btn-ok btn-lg btn-block" id="do-checkin">Potvrdi dolazak i predaj ulaznice</button>`
-        : `<button class="btn btn-gold btn-lg btn-block" id="do-checkin" data-force="1">Svejedno potvrdi dolazak</button>`}
-      <button class="btn btn-outline btn-block" data-close>Zatvori</button>
+        ? `<button class="btn btn-ok btn-lg btn-block" id="do-checkin">Preuzeo pozivnicu</button>`
+        : `<button class="btn btn-gold btn-lg btn-block" id="do-checkin" data-force="1">Svejedno potvrdi – preuzeo pozivnicu</button>`}
+      <button class="btn btn-outline btn-block" id="do-cancel">${allIn ? 'Zatvori' : 'Odustani'}</button>
     </div>`);
+
+  $('#do-cancel', modal).addEventListener('click', () => (allIn ? closeModal() : goToManualList()));
 
   const btn = $('#do-checkin', modal);
   const updateCount = () => {
     if (!btn || inv.status !== 'confirmed') return;
     const n = $$('[data-guest]:checked', modal).length;
     btn.disabled = n === 0;
-    btn.textContent = `Potvrdi dolazak i predaj ulaznice (${n})`;
+    btn.textContent = n === people.length ? 'Preuzeo pozivnicu' : `Preuzeo pozivnicu (${n} od ${people.length})`;
   };
   $$('[data-guest]', modal).forEach((c) => c.addEventListener('change', updateCount));
   updateCount();
@@ -239,11 +264,36 @@ function showCheckinResult({ invitation: inv, newlyCheckedIn }) {
   openModal(`
     <div class="big-result">
       <div class="icon" style="color:var(--ok)">✓</div>
-      <h3>Dolazak evidentiran</h3>
-      <p>Predajte <strong>${n} ${n === 1 ? 'ulaznicu' : n < 5 ? 'ulaznice' : 'ulaznica'}</strong>:</p>
+      <h3>Pozivnica preuzeta – spremljeno</h3>
+      <p>Predajte <strong>${n} ${plural(n, 'ulaznicu', 'ulaznice', 'ulaznica')}</strong>:</p>
       <ul class="person-list">${names.map((g) => `<li>${g.isCompanion ? esc(companionLabel(g.fullName)) : `<strong>${esc(g.fullName)}</strong>`}</li>`).join('')}</ul>
     </div>
     <div class="actions"><button class="btn btn-gold btn-lg btn-block" data-close>Gotovo – sljedeći gost</button></div>`);
+}
+
+// Tablica preuzetih pozivnica (najnovije gore).
+function renderCheckinLog() {
+  const rows = [];
+  for (const inv of invitations) {
+    for (const g of inv.guests) {
+      if (g.checkedInAt) rows.push({ inv, g });
+    }
+  }
+  rows.sort((a, b) => b.g.checkedInAt.localeCompare(a.g.checkedInAt) || a.g.isCompanion - b.g.isCompanion);
+  const total = invitations.filter((i) => i.status === 'confirmed').reduce((a, i) => a + i.personCount, 0);
+  $('#log-count').textContent = `Preuzelo: ${rows.length} od ${total} ${plural(total, 'potvrđene osobe', 'potvrđene osobe', 'potvrđenih osoba')}`;
+  $('#log-body').innerHTML = rows.length
+    ? rows
+        .slice(0, 200)
+        .map(({ inv, g }) => `<tr>
+          <td>${fmtTime(g.checkedInAt)}</td>
+          <td>${g.isCompanion ? esc(companionLabel(g.fullName)) : `<strong>${esc(g.fullName)}</strong>`}</td>
+          <td>${g.isCompanion ? esc(inv.fullName) : '<span class="hint">—</span>'}</td>
+          <td>${esc(inv.organization) || '<span class="hint">—</span>'}</td>
+          <td>${esc(g.checkedInBy || '')}</td>
+        </tr>`)
+        .join('')
+    : `<tr><td colspan="5" class="empty">Još nitko nije preuzeo pozivnicu.</td></tr>`;
 }
 
 // ---------- skeniranje ----------
@@ -262,7 +312,7 @@ async function handleCode(code) {
   try {
     const { invitation } = await api('/api/staff/scan', { method: 'POST', body: { code } });
     navigator.vibrate?.(80);
-    openParty(invitation);
+    openParty(invitation, { fromScan: true });
   } catch (err) {
     navigator.vibrate?.([60, 60, 60]);
     openModal(`

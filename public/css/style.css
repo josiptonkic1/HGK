@@ -308,6 +308,18 @@ body.staff { background: var(--bg-2); min-height: 100vh; }
 .guest-checks li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; background: var(--panel-2); }
 .guest-checks li.done { border-color: rgba(95, 191, 127, .4); background: var(--ok-bg); }
 .guest-checks .when { font-size: 13px; color: #a9e3bd; }
+.scan-ok {
+  display: flex; gap: 14px; align-items: center;
+  margin: -6px -6px 16px; padding: 16px;
+  border-radius: 12px; background: var(--ok-bg); border: 1px solid rgba(95, 191, 127, .5);
+}
+.scan-ok-icon {
+  flex: none; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
+  background: linear-gradient(180deg, #74d394, #3f9c5e); color: #06200f; font-size: 30px; font-weight: 700;
+}
+.scan-ok-title { font-family: var(--font-head); font-weight: 600; color: #a9e3bd; font-size: 14px; letter-spacing: .3px; }
+.scan-ok-name { font-family: var(--font-head); font-weight: 700; font-size: 22px; line-height: 1.2; margin: 2px 0; }
+.scan-ok-comp { color: var(--text); font-size: 15px; }
 .big-result { text-align: center; padding: 18px 10px 4px; }
 .big-result .icon { font-size: 54px; line-height: 1; }
 .big-result h3 { font-size: 22px; margin: 10px 0 4px; color: var(--text); }

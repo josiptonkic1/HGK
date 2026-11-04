@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0c0a07">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Zlatna kuna">
   <title>Uzvanici – 31. Zlatna kuna</title>
   <link rel="stylesheet" href="/vendor/fontsource/montserrat/600.css">
   <link rel="stylesheet" href="/vendor/fontsource/montserrat/700.css">
@@ -18,6 +25,7 @@
   <header class="topbar">
     <div id="top-logo"></div>
     <div class="who">
+      <button type="button" class="btn btn-gold btn-sm" id="btn-install" hidden>Instaliraj aplikaciju</button>
       <span class="badge badge-role" id="role-badge"></span>
       <span class="name" id="user-name"></span>
       <button type="button" class="btn btn-outline btn-sm" id="btn-logout">Odjava</button>
@@ -59,6 +67,14 @@
           <ul class="results" id="scan-results"></ul>
           <p class="hint" id="scan-search-hint">Pretraga traži nositelje pozivnica i osobe u pratnji, bez obzira na kvačice (č, ć, š, ž, đ).</p>
         </div>
+      </div>
+      <div class="panel">
+        <h2>Preuzete pozivnice</h2>
+        <p class="count-line" id="log-count"></p>
+        <table class="table">
+          <thead><tr><th>Vrijeme</th><th>Ime i prezime</th><th>Pratnja od</th><th>Organizacija</th><th>Moderator</th></tr></thead>
+          <tbody id="log-body"></tbody>
+        </table>
       </div>
     </section>
 
