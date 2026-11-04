@@ -387,14 +387,31 @@ export function deleteUser(db, id, currentUserId) {
   db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
 }
 
-// Početni korisnici iz .env: kreiraju se samo ako još ne postoji nijedan korisnik te uloge.
+// Početni korisnici iz .env / Render Environment. Varijable su "izvor istine":
+// korisnik se kreira ako ne postoji, a ako postoji, lozinka i uloga se usklade s varijablama.
+// Neispravne vrijednosti (npr. prekratka lozinka) ne ruše pokretanje - vraćaju se kao greške.
 export function ensureSeedUsers(db, seeds) {
   const created = [];
+  const updated = [];
+  const errors = [];
   for (const { username, password, name, role } of seeds) {
     if (!username || !password) continue;
-    const exists = db.prepare('SELECT COUNT(*) AS n FROM users WHERE role = ?').get(role).n > 0;
-    if (exists) continue;
-    created.push(createUser(db, { username, password, name, role }));
+    const u = cleanText(username, 60).toLowerCase();
+    try {
+      const existing = db.prepare('SELECT * FROM users WHERE username = ?').get(u);
+      if (!existing) {
+        created.push(createUser(db, { username: u, password, name, role }));
+        continue;
+      }
+      if (String(password).length < 8) throw new AppError(400, 'validation', 'Lozinka mora imati barem 8 znakova.');
+      if (!verifyPassword(password, existing.password_hash) || existing.role !== role) {
+        db.prepare('UPDATE users SET password_hash = ?, role = ? WHERE id = ?').run(hashPassword(password), role, existing.id);
+        updated.push(getUser(db, existing.id));
+      }
+    } catch (err) {
+      if (!(err instanceof AppError)) throw err;
+      errors.push({ username: u, role, message: err.message });
+    }
   }
-  return created;
+  return { created, updated, errors };
 }

@@ -22,18 +22,39 @@ describe('hosting iza HTTPS proxyja (Render)', () => {
 });
 
 describe('početni korisnici iz .env', () => {
-  test('kreiraju se admin i moderator, ali samo jednom po ulozi', () => {
+  test('kreiraju se admin i moderator, bez duplikata pri ponovnom pokretanju', () => {
     const db = openDb(':memory:');
     const seeds = [
       { username: 'admin', password: 'admin-lozinka-1', name: 'Administrator', role: 'admin' },
       { username: 'moderator', password: 'mod-lozinka-1', name: 'Moderator', role: 'moderator' },
     ];
-    assert.equal(ensureSeedUsers(db, seeds).length, 2);
+    assert.equal(ensureSeedUsers(db, seeds).created.length, 2);
     assert.equal(authenticate(db, 'admin', 'admin-lozinka-1').role, 'admin');
     assert.equal(authenticate(db, 'moderator', 'mod-lozinka-1').role, 'moderator');
-    assert.equal(ensureSeedUsers(db, seeds).length, 0, 'ponovno pokretanje ne kreira duplikate');
+    const again = ensureSeedUsers(db, seeds);
+    assert.equal(again.created.length + again.updated.length, 0, 'ponovno pokretanje ništa ne mijenja');
     assert.equal(listUsers(db).length, 2);
-    assert.equal(ensureSeedUsers(db, [{ username: '', password: '', role: 'moderator' }]).length, 0);
+    assert.equal(ensureSeedUsers(db, [{ username: '', password: '', role: 'moderator' }]).created.length, 0);
+  });
+
+  test('promjena lozinke u Renderu/.env se primijeni na postojećeg korisnika', () => {
+    const db = openDb(':memory:');
+    ensureSeedUsers(db, [{ username: 'Josip', password: 'stara-lozinka', role: 'admin' }]);
+    const res = ensureSeedUsers(db, [{ username: 'josip', password: 'nova-lozinka', role: 'admin' }]);
+    assert.equal(res.updated.length, 1);
+    assert.equal(authenticate(db, 'josip', 'stara-lozinka'), null);
+    assert.equal(authenticate(db, 'JOSIP', 'nova-lozinka').role, 'admin');
+  });
+
+  test('prekratka lozinka ne ruši pokretanje nego se prijavi kao greška', () => {
+    const db = openDb(':memory:');
+    const res = ensureSeedUsers(db, [
+      { username: 'josip', password: 'josip', role: 'admin' },
+      { username: 'moderator', password: 'mod-lozinka-1', role: 'moderator' },
+    ]);
+    assert.equal(res.errors.length, 1);
+    assert.match(res.errors[0].message, /8 znakova/);
+    assert.equal(res.created.length, 1, 'ispravan korisnik se ipak kreira');
   });
 });
 

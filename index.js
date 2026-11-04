@@ -13,11 +13,13 @@ if (!sessionSecret) {
 }
 
 const db = openDb(DB_FILE);
-const created = ensureSeedUsers(db, [
+const seed = ensureSeedUsers(db, [
   { username: process.env.ADMIN_USERNAME, password: process.env.ADMIN_PASSWORD, name: 'Administrator', role: 'admin' },
   { username: process.env.MODERATOR_USERNAME, password: process.env.MODERATOR_PASSWORD, name: 'Moderator', role: 'moderator' },
 ]);
-for (const u of created) console.log(`Kreiran korisnik "${u.username}" (${u.role}).`);
+for (const u of seed.created) console.log(`Kreiran korisnik "${u.username}" (${u.role}).`);
+for (const u of seed.updated) console.log(`Lozinka za "${u.username}" (${u.role}) usklađena s varijablama okruženja.`);
+for (const e of seed.errors) console.error(`GREŠKA: korisnik "${e.username}" (${e.role}) nije postavljen: ${e.message}`);
 
 const app = createApp({
   db,
