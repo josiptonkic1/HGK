@@ -7,8 +7,9 @@ android {
         applicationId "hr.hgk.zlatnakuna"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Broj builda s GitHub Actions - svaka nova verzija ima veći versionCode pa se instalira kao ažuriranje.
+        versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1') as Integer)
+        versionName "2.0.${System.getenv('GITHUB_RUN_NUMBER') ?: '0'}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,7 +17,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Stalni testni ključ (zk-debug.keystore u repozitoriju): svi buildovi imaju isti potpis,
+    // pa se nova verzija instalira preko stare bez brisanja. Za Trgovinu Play koristiti tajni ključ.
+    signingConfigs {
+        zk {
+            storeFile file('zk-debug.keystore')
+            storePassword 'android'
+            keyAlias 'zlatnakuna'
+            keyPassword 'android'
+        }
+    }
     buildTypes {
+        debug {
+            if (file('zk-debug.keystore').exists()) {
+                signingConfig signingConfigs.zk
+            }
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

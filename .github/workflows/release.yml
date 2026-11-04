@@ -69,6 +69,21 @@ jobs:
           yes | "$SDKM" --licenses > /dev/null || true
           "$SDKM" --install "platforms;android-36" "build-tools;36.0.0" > /dev/null
 
+      # Jednom se generira stalni ključ za potpis i sprema u repozitorij,
+      # da svi budući APK-ovi imaju isti potpis (ažuriranje bez brisanja stare verzije).
+      - name: Ključ za potpis APK-a
+        run: |
+          KS=mobile/android/app/zk-debug.keystore
+          if [ ! -f "$KS" ]; then
+            keytool -genkeypair -keystore "$KS" -storetype PKCS12 -storepass android -keypass android \
+              -alias zlatnakuna -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Zlatna kuna, O=HGK, C=HR"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$KS"
+            git commit -m "Stalni testni kljuc za potpis APK-a [skip ci]"
+            git push origin HEAD:main
+          fi
+
       - name: Build APK
         working-directory: mobile
         run: |
