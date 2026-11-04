@@ -7,6 +7,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src *; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
   <title>Zlatna kuna</title>
   <link rel="stylesheet" href="app.css">
+  <script src="config.js"></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -17,21 +18,16 @@
     </div>
     <p class="sub">Ulaz i skeniranje pozivnica</p>
 
-    <div id="checking" class="card center" hidden>
+    <div id="checking" class="card center">
       <div class="spinner" aria-hidden="true"></div>
-      <p>Spajanje na poslužitelj…</p>
-      <p class="hint" id="checking-url"></p>
+      <p>Spajanje…</p>
     </div>
 
-    <form id="setup" class="card" novalidate hidden>
-      <h1>Adresa poslužitelja</h1>
-      <p class="hint">Upišite adresu na kojoj radi aplikacija Zlatna kuna (dobit ćete je od administratora), npr. <code>https://zlatnakuna.hgk.hr</code>.</p>
-      <div id="error" class="error" role="alert" hidden></div>
-      <label for="url">Adresa</label>
-      <input id="url" type="url" inputmode="url" autocomplete="url" autocapitalize="none" spellcheck="false" placeholder="https://…" required>
-      <button type="submit" id="connect">Spoji se</button>
-      <p class="hint small">Adresa se pamti; kasnije je možete promijeniti u aplikaciji (gumb „Poslužitelj”).</p>
-    </form>
+    <div id="failed" class="card center" hidden>
+      <h1>Nije moguće spojiti se</h1>
+      <div id="error" class="error" role="alert"></div>
+      <button type="button" id="retry">Pokušaj ponovno</button>
+    </div>
   </main>
 </body>
 </html>

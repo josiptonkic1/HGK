@@ -74,7 +74,14 @@ jobs:
 
       - name: Build APK
         working-directory: mobile
+        env:
+          SERVER_URL: ${{ vars.SERVER_URL }}
         run: |
+          # Adresa poslužitelja: varijabla repozitorija SERVER_URL ima prednost pred mobile/www/config.js
+          if [ -n "$SERVER_URL" ]; then
+            printf "window.ZK_SERVER_URL = '%s';\n" "$SERVER_URL" > www/config.js
+          fi
+          cat www/config.js
           npm ci
           npx cap sync android
           cd android
