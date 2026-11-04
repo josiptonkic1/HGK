@@ -9,3 +9,4 @@ Thumbs.db
 PRISTUPNI-PODACI.txt
 dist/
 cloudflared.exe
+pozivnica/vendor/

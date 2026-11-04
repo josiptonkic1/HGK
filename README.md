@@ -24,12 +24,24 @@ Web aplikacija za HGK: uzvanici kroz link pozivnice potvrđuju dolazak (s pratnj
 - **izvoz u PDF i Excel** – svi ili samo dolaze, ne dolaze, nisu odgovorili ili došli. Popis je grupiran po statusu i grupi uzvanika, a pratnja je ispisana kao „Ime Prezime – pratnja” odmah ispod osobe koju prati. U Excelu su statusi na zasebnim listovima, a redovi su grupirani (mogu se sklapati),
 - upravljanje korisnicima (admini i moderatori) i postavkama (opći link, zadani broj pratnje).
 
-## Preuzimanje
+## Android aplikacija bez poslužitelja (preporučeno)
 
-- **Aplikacija (računalo/server):** https://github.com/josiptonkic1/HGK/releases/latest/download/zlatna-kuna-31.zip – raspakirajte i pokrenite `start.bat`. Pri prvom pokretanju generiraju se lozinke za admina i moderatora (`PRISTUPNI-PODACI.txt`).
-- **Android aplikacija:** https://github.com/josiptonkic1/HGK/releases/latest/download/zlatna-kuna.apk
+- **Link pozivnice za uzvanike:** https://josiptonkic1.github.io/HGK/ (mapa `pozivnica/`, statična stranica na GitHub Pages)
+- **Android aplikacija:** https://github.com/josiptonkic1/HGK/releases/latest/download/zlatna-kuna.apk (mapa `mobile/`)
 
-Oba se automatski grade i objavljuju (`.github/workflows/release.yml`) pri svakoj promjeni na grani `main`.
+Kako radi:
+1. Uzvanik otvori link, upiše ime, prezime i pratnju i dobije QR kod u kojem su zapisani ti podaci (`pozivnica/zk-qr.js`).
+2. Na ulazu aplikacija skenira QR kod i prikaže „QR kod uspješno skeniran” s imenom i pratnjom. Moderator bira **Preuzeo pozivnicu** (dolazak se sprema u bazu na mobitelu) ili **Odustani** (prelazak na ručni pregled popisa).
+3. Ako QR ne radi, osoba se traži na popisu ili upisuje ručno.
+4. **Admin** (PIN): link pozivnice, izvoz u Excel i PDF (dijeljenje WhatsAppom, e-mailom ili na Drive), neobavezni popis pozvanih, brisanje podataka.
+
+Ograničenja: podaci postoje samo na tom jednom mobitelu, pa redovito radite izvoz u Excel. QR kod nije kriptografski zaštićen: kontrolni zbroj otkriva oštećene i izmijenjene kodove, a popis pozvanih upozorava na osobe koje nisu na njemu.
+
+Stranica i APK se automatski grade i objavljuju (`.github/workflows/release.yml`) pri svakoj promjeni na grani `main`.
+
+---
+
+Ispod je opisana starija **web aplikacija s poslužiteljem** (mape `src/`, `public/`). Za Android aplikaciju nije potrebna.
 
 ## Web aplikacija online (Render)
 

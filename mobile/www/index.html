@@ -4,30 +4,116 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0c0a07">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src *; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
   <title>Zlatna kuna</title>
+  <link rel="stylesheet" href="vendor/fonts.css">
+  <link rel="stylesheet" href="vendor/style.css">
   <link rel="stylesheet" href="app.css">
-  <script src="config.js"></script>
-  <script src="app.js" defer></script>
+  <script src="vendor/zk-qr.js"></script>
+  <script src="vendor/html5-qrcode.min.js" defer></script>
+  <script src="vendor/exceljs.min.js" defer></script>
+  <script src="vendor/pdfkit.standalone.js" defer></script>
+  <script type="module" src="js/app.js"></script>
 </head>
-<body>
-  <main class="wrap">
-    <div class="logo" aria-label="31. Zlatna kuna">
-      <span class="num">31.</span>
-      <span class="word">ZLATNA<br>KUNA</span>
-    </div>
-    <p class="sub">Ulaz i skeniranje pozivnica</p>
+<body class="staff">
+  <header class="topbar">
+    <div class="zk-logo small" aria-label="31. Zlatna kuna"><span class="num">31.</span><span class="word">ZLATNA KUNA</span></div>
+    <div class="who"><span class="badge badge-role" id="role-badge">Moderator</span></div>
+  </header>
 
-    <div id="checking" class="card center">
-      <div class="spinner" aria-hidden="true"></div>
-      <p>Spajanje…</p>
-    </div>
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="scan" aria-selected="true">Skeniranje</button>
+    <button role="tab" data-tab="list" aria-selected="false">Popis</button>
+    <button role="tab" data-tab="admin" aria-selected="false">Admin</button>
+  </nav>
 
-    <div id="failed" class="card center" hidden>
-      <h1>Nije moguće spojiti se</h1>
-      <div id="error" class="error" role="alert"></div>
-      <button type="button" id="retry">Pokušaj ponovno</button>
-    </div>
+  <main>
+    <!-- SKENIRANJE -->
+    <section data-panel="scan">
+      <div class="panel">
+        <div class="scanner-wrap">
+          <div id="reader"></div>
+          <div class="scanner-placeholder" id="scanner-placeholder">Kamera je isključena.</div>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn btn-gold btn-lg btn-block" id="btn-camera">Pokreni kameru</button>
+          <label class="btn btn-outline btn-block" for="scan-file">Skeniraj sliku QR koda</label>
+          <input type="file" id="scan-file" accept="image/*" hidden>
+        </div>
+        <div id="camera-error" class="alert alert-warn" hidden></div>
+      </div>
+      <div class="panel">
+        <h2>Zadnji dolasci</h2>
+        <p class="count-line" id="log-count"></p>
+        <ul class="log" id="log"></ul>
+      </div>
+    </section>
+
+    <!-- POPIS -->
+    <section data-panel="list" hidden>
+      <div class="stats" id="stats"></div>
+      <div class="panel">
+        <div class="toolbar">
+          <input type="search" id="search" placeholder="Pretraži ime ili prezime…" aria-label="Pretraži" autocomplete="off">
+          <select id="filter" aria-label="Prikaz">
+            <option value="all">Svi</option>
+            <option value="arrived">Došli</option>
+            <option value="missing">Pozvani, nisu došli</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-outline btn-block" id="btn-manual">+ Ručni unos dolaska (QR ne radi)</button>
+        <p class="count-line" id="list-count" style="margin-top:12px"></p>
+        <ul class="results" id="list"></ul>
+      </div>
+    </section>
+
+    <!-- ADMIN -->
+    <section data-panel="admin" hidden>
+      <form class="panel" id="pin-form" novalidate>
+        <h2 id="pin-title">Admin</h2>
+        <p class="hint mt0" id="pin-hint"></p>
+        <div id="pin-error" class="alert alert-err" hidden></div>
+        <div class="field"><label for="pin">PIN</label><input type="password" id="pin" inputmode="numeric" autocomplete="off" maxlength="12"></div>
+        <div class="field" id="pin2-field" hidden><label for="pin2">Ponovite PIN</label><input type="password" id="pin2" inputmode="numeric" autocomplete="off" maxlength="12"></div>
+        <button class="btn btn-gold btn-block" type="submit" id="pin-submit">Otključaj</button>
+      </form>
+
+      <div id="admin-area" hidden>
+        <div class="panel">
+          <h2>Link pozivnice</h2>
+          <p class="hint mt0">Pošaljite ovaj link uzvanicima. Na njemu upisuju ime i pratnju i dobivaju QR kod.</p>
+          <div class="link-box"><span id="invite-link"></span></div>
+          <div class="actions"><button type="button" class="btn btn-gold" id="btn-share-link">Podijeli link</button></div>
+        </div>
+
+        <div class="panel">
+          <h2>Izvoz</h2>
+          <p class="hint mt0">Excel ima listove Došli, Pozvani – nisu došli i Svi. Pratnja je ispisana kao „Ime Prezime – pratnja”.</p>
+          <div class="actions">
+            <button type="button" class="btn btn-gold" id="btn-xlsx">Excel</button>
+            <button type="button" class="btn btn-gold" id="btn-pdf">PDF</button>
+          </div>
+        </div>
+
+        <form class="panel" id="invited-form" novalidate>
+          <h2>Popis pozvanih (neobavezno)</h2>
+          <p class="hint mt0">Upišite pozvane, jedno ime po retku (može se zalijepiti iz Excela). Pri skeniranju aplikacija javlja je li osoba na popisu, a u izvozu se vidi tko nije došao.</p>
+          <div class="field"><textarea id="invited-text" placeholder="Ivan Horvat&#10;Ana Kovačić"></textarea></div>
+          <button class="btn btn-outline" type="submit">Dodaj na popis</button>
+          <div id="invited-result"></div>
+        </form>
+
+        <div class="panel">
+          <h2>Postavke</h2>
+          <div class="actions">
+            <button type="button" class="btn btn-outline" id="btn-change-pin">Promijeni PIN</button>
+            <button type="button" class="btn btn-outline" id="btn-lock">Zaključaj admin</button>
+            <button type="button" class="btn btn-danger" id="btn-wipe">Obriši sve podatke</button>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <div id="modal-root"></div>
 </body>
 </html>
