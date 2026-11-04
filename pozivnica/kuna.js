@@ -51,7 +51,7 @@
     var shuffle = function (a) { for (var i = a.length - 1; i > 0; i--) { var j = (Math.random() * (i + 1)) | 0; var t = a[i]; a[i] = a[j]; a[j] = t; } return a; };
     shuffle(edge);
     shuffle(fill);
-    var nEdge = Math.min(edge.length, Math.round(count * 0.5));
+    var nEdge = Math.min(edge.length, Math.round(count * 0.68));
     return edge.slice(0, nEdge).concat(fill.slice(0, count - nEdge));
   }
 
@@ -70,6 +70,36 @@
     return c;
   }
 
+  // Zvjezdica s četiri kraka (za povremeno svjetlucanje)
+  function makeStar() {
+    var s = 64;
+    var c = document.createElement('canvas');
+    c.width = c.height = s;
+    var g = c.getContext('2d');
+    var h = s / 2;
+    g.translate(h, h);
+    for (var r = 0; r < 2; r++) {
+      var grd = g.createLinearGradient(-h, 0, h, 0);
+      grd.addColorStop(0, 'rgba(255,230,160,0)');
+      grd.addColorStop(0.5, 'rgba(255,248,220,1)');
+      grd.addColorStop(1, 'rgba(255,230,160,0)');
+      g.fillStyle = grd;
+      g.beginPath();
+      g.moveTo(-h, 0);
+      g.quadraticCurveTo(0, -1.6, h, 0);
+      g.quadraticCurveTo(0, 1.6, -h, 0);
+      g.fill();
+      g.rotate(Math.PI / 2);
+    }
+    var core = g.createRadialGradient(0, 0, 0, 0, 0, h * 0.35);
+    core.addColorStop(0, 'rgba(255,255,255,1)');
+    core.addColorStop(0.4, 'rgba(255,225,150,0.6)');
+    core.addColorStop(1, 'rgba(255,210,120,0)');
+    g.fillStyle = core;
+    g.fillRect(-h, -h, s, s);
+    return c;
+  }
+
   var easeOut = function (t) { return 1 - Math.pow(1 - t, 3); };
 
   window.startGoldenMarten = function (logo) {
@@ -81,6 +111,7 @@
     logo.appendChild(canvas);
     var ctx = canvas.getContext('2d');
     var sprites = COLORS.map(makeSprite);
+    var star = makeStar();
     var mask = maskCanvas();
     var glow = null; // zlatno obojeni obris za blagi sjaj tijela
     var dpr = 1;
@@ -126,12 +157,15 @@
     }
 
     function build() {
-      var count = Math.round(Math.min(2000, Math.max(800, box.w * 6)));
+      // Rijetka zlatna prašina: obris se nazire, nije ispunjen.
+      var count = Math.round(Math.min(1100, Math.max(460, box.w * 3)));
       particles = samplePoints(mask, count).map(function (p) {
+        var isStar = Math.random() < 0.05;
         return {
+          star: isStar,
           nx: p[0],
           ny: p[1],
-          size: 0.4 + Math.pow(Math.random(), 2.8) * 1.5,
+          size: isStar ? 2.2 + Math.random() * 2.6 : 0.35 + Math.pow(Math.random(), 3) * 1.25,
           color: (Math.random() * COLORS.length) | 0,
           base: 0.4 + Math.random() * 0.6,
           tw: 1.2 + Math.random() * 3.2,
@@ -170,7 +204,8 @@
       ctx.clearRect(0, 0, W, H);
 
       // blagi zlatni sjaj tijela kad se prašina složi
-      var fillA = Math.min(1, Math.max(0, (t - 1.6) / 1.2)) * (0.2 + 0.04 * Math.sin(t * 1.3));
+      // samo jedva vidljiv zlatni dašak ispod prašine (bez punog ispunjenja)
+      var fillA = Math.min(1, Math.max(0, (t - 1.6) / 1.2)) * 0.035;
       if (fillA > 0 && glow) {
         ctx.globalAlpha = fillA;
         ctx.drawImage(glow, box.x, box.y, box.w, box.h);
@@ -193,11 +228,22 @@
           y = box.y + (p.sy + (p.ny - p.sy) * e) * box.h + Math.sin(k * Math.PI) * box.h * 0.3 * (p.sy > 0 ? 1 : -1);
           a *= Math.min(1, k * 2.5);
         }
-        if (!reduced) a *= 0.5 + 0.5 * Math.sin(t * p.tw + p.ph);
         var dsh = Math.abs(p.nx - shine);
-        if (dsh < 0.1) a = Math.min(1.7, a + (1 - dsh / 0.1) * 1.0);
+        var boost = dsh < 0.1 ? 1 - dsh / 0.1 : 0;
+        if (p.star) {
+          // zvjezdica kratko bljesne pa se ugasi
+          var tw = reduced ? 0.6 : Math.pow(Math.max(0, Math.sin(t * p.tw * 0.6 + p.ph)), 8);
+          a *= Math.max(tw, boost);
+          if (a <= 0.02) continue;
+          var ss = p.size * 6 * (0.7 + 0.3 * tw);
+          ctx.globalAlpha = Math.min(1, a);
+          ctx.drawImage(star, x - ss / 2, y - ss / 2, ss, ss);
+          continue;
+        }
+        if (!reduced) a *= 0.45 + 0.55 * Math.sin(t * p.tw + p.ph);
+        if (boost) a = Math.min(1.6, a + boost * 0.9);
         if (a <= 0.02) continue;
-        var s = p.size * 3.4;
+        var s = p.size * 3.2;
         ctx.globalAlpha = Math.min(1, a);
         ctx.drawImage(sprites[p.color], x - s / 2, y - s / 2, s, s);
       }
