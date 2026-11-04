@@ -10,3 +10,4 @@ PRISTUPNI-PODACI.txt
 dist/
 cloudflared.exe
 pozivnica/vendor/
+pozivnica/ulaz/

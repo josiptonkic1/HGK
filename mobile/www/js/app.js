@@ -1,11 +1,11 @@
 // Android aplikacija "31. Zlatna kuna" - radi potpuno na mobitelu, bez poslužitelja.
 // QR kod pozivnice sam nosi ime, prezime i pratnju; dolasci se spremaju u lokalnu bazu.
 import * as db from './db.js';
+import * as auth from './auth.js';
 import { buildXlsx, buildPdf, shareFile, shareText, fmtDate } from './export.js';
 
 const TITLE = '31. Zlatna kuna';
 export const INVITE_URL = 'https://josiptonkic1.github.io/HGK/';
-const PIN_KEY = 'zk31_admin_pin';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -46,7 +46,6 @@ function selectTab(name) {
   $$('#tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
   $$('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== name));
   if (name !== 'scan') stopCamera();
-  if (name === 'admin') renderAdmin();
 }
 
 // ---------- modal ----------
@@ -294,52 +293,77 @@ function manualEntry() {
   $('#m-first', m).focus();
 }
 
-// ---------- admin ----------
-async function hashPin(pin) {
-  const data = new TextEncoder().encode(`zk31:${pin}`);
-  const buf = await crypto.subtle.digest('SHA-256', data);
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-const storedPin = () => { try { return localStorage.getItem(PIN_KEY); } catch { return null; } };
+// ---------- prijava ----------
+const showError = (el, msg) => { el.textContent = msg; el.hidden = !msg; };
 
-let changingPin = false;
-function renderAdmin() {
-  const hasPin = Boolean(storedPin());
-  const setup = !hasPin || changingPin;
-  $('#pin-form').hidden = admin && !changingPin;
-  $('#admin-area').hidden = !admin || changingPin;
-  $('#role-badge').textContent = admin ? 'Administrator' : 'Moderator';
-  $('#pin-title').textContent = setup ? (changingPin ? 'Novi admin PIN' : 'Postavite admin PIN') : 'Admin';
-  $('#pin-hint').textContent = setup
-    ? 'PIN štiti izvoz, brisanje i popis pozvanih. Zapamtite ga – bez njega se admin dio ne može otključati.'
-    : 'Upišite PIN za pristup admin dijelu.';
-  $('#pin2-field').hidden = !setup;
-  $('#pin-submit').textContent = setup ? 'Spremi PIN' : 'Otključaj';
-  $('#pin-error').hidden = true;
+function showAuth() {
+  stopCamera();
+  closeModal();
+  $('#app').hidden = true;
+  $('#auth').hidden = false;
+  const setup = !auth.isSetUp();
+  $('#setup-form').hidden = !setup;
+  $('#login-form').hidden = setup;
+  showError($('#setup-error'), '');
+  showError($('#login-error'), '');
+  (setup ? $('#s-admin') : $('#l-user')).focus();
+}
+
+function startApp(role) {
+  admin = role === 'admin';
+  $('#auth').hidden = true;
+  $('#app').hidden = false;
+  $('#role-badge').textContent = auth.ROLES[role];
+  $('#tab-admin').hidden = !admin;
   $('#invite-link').textContent = INVITE_URL;
+  selectTab('scan');
+  reload();
 }
 
-async function submitPin(e) {
+async function submitSetup(e) {
   e.preventDefault();
-  const pin = $('#pin').value.trim();
-  const err = $('#pin-error');
-  const setup = !storedPin() || changingPin;
-  const fail = (msg) => { err.textContent = msg; err.hidden = false; };
-  if (setup) {
-    if (!/^\d{4,12}$/.test(pin)) return fail('PIN mora imati 4 do 12 znamenki.');
-    if (pin !== $('#pin2').value.trim()) return fail('PIN-ovi se ne podudaraju.');
-    try { localStorage.setItem(PIN_KEY, await hashPin(pin)); } catch { return fail('PIN nije moguće spremiti.'); }
-    changingPin = false;
-    admin = true;
-    toast('PIN je spremljen.');
-  } else {
-    if ((await hashPin(pin)) !== storedPin()) return fail('Pogrešan PIN.');
-    admin = true;
+  const err = $('#setup-error');
+  const a = $('#s-admin').value;
+  const m = $('#s-mod').value;
+  if (a !== $('#s-admin2').value) return showError(err, 'Lozinke za admina se ne podudaraju.');
+  if (m !== $('#s-mod2').value) return showError(err, 'Lozinke za moderatora se ne podudaraju.');
+  try {
+    await auth.setup(a, m);
+  } catch (ex) {
+    return showError(err, ex.message);
   }
-  $('#pin').value = '';
-  $('#pin2').value = '';
-  renderAdmin();
+  $$('#setup-form input').forEach((i) => (i.value = ''));
+  toast('Lozinke su spremljene. Prijavite se.');
+  showAuth();
+  $('#l-user').value = 'admin';
+  $('#l-pass').focus();
 }
+
+async function submitLogin(e) {
+  e.preventDefault();
+  const role = await auth.login($('#l-user').value, $('#l-pass').value);
+  if (!role) return showError($('#login-error'), 'Pogrešno korisničko ime ili lozinka.');
+  $('#l-pass').value = '';
+  startApp(role);
+}
+
+async function submitPassword(e) {
+  e.preventDefault();
+  const err = $('#pw-error');
+  const pw = $('#pw-new').value;
+  if (pw !== $('#pw-new2').value) return showError(err, 'Lozinke se ne podudaraju.');
+  try {
+    await auth.changePassword($('#pw-role').value, pw);
+  } catch (ex) {
+    return showError(err, ex.message);
+  }
+  showError(err, '');
+  $('#pw-new').value = '';
+  $('#pw-new2').value = '';
+  toast(`Lozinka za ${$('#pw-role').value} je promijenjena.`);
+}
+
+// ---------- admin ----------
 
 async function addInvited(e) {
   e.preventDefault();
@@ -408,13 +432,14 @@ function init() {
   });
   $('#btn-manual').addEventListener('click', manualEntry);
 
-  $('#pin-form').addEventListener('submit', submitPin);
+  $('#setup-form').addEventListener('submit', submitSetup);
+  $('#login-form').addEventListener('submit', submitLogin);
+  $('#password-form').addEventListener('submit', submitPassword);
+  $('#btn-logout').addEventListener('click', () => { auth.logout(); admin = false; showAuth(); });
   $('#invited-form').addEventListener('submit', addInvited);
   $('#btn-share-link').addEventListener('click', () => shareText(`Pozivnica za ${TITLE}: ${INVITE_URL}`, 'Link pozivnice').catch(() => {}));
   $('#btn-xlsx').addEventListener('click', () => doExport('xlsx'));
   $('#btn-pdf').addEventListener('click', () => doExport('pdf'));
-  $('#btn-lock').addEventListener('click', () => { admin = false; renderAdmin(); selectTab('scan'); });
-  $('#btn-change-pin').addEventListener('click', () => { changingPin = true; renderAdmin(); });
   $('#btn-wipe').addEventListener('click', async () => {
     if (!confirm('Obrisati SVE podatke (dolaske i popis pozvanih)? Prije toga napravite izvoz u Excel.')) return;
     if (!confirm('Jeste li sigurni? Ovo se ne može poništiti.')) return;
@@ -427,7 +452,15 @@ function init() {
   document.addEventListener('backbutton', () => { if ($('.modal-backdrop')) closeModal(); });
 
   window.zk = { handleCode, reload }; // za testiranje
-  reload();
+
+  // Web verzija: offline rad i instalacija na početni zaslon (u Android aplikaciji nije potrebno).
+  if ('serviceWorker' in navigator && !window.Capacitor?.isNativePlatform?.()) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  const role = auth.current();
+  if (role) startApp(role);
+  else showAuth();
 }
 
 init();

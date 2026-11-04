@@ -46,7 +46,10 @@ jobs:
         working-directory: mobile
         run: npm run vendor
 
-      # ---------- stranica pozivnice ----------
+      # ---------- stranica pozivnice + web aplikacija za ulaz ----------
+      - name: Web aplikacija za ulaz u /ulaz
+        run: cp -r mobile/www pozivnica/ulaz
+
       - name: Objava stranice pozivnice (GitHub Pages)
         uses: peaceiris/actions-gh-pages@v4
         with:

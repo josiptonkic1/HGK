@@ -50,6 +50,7 @@ copy(join(ROOT, 'public', 'img', 'favicon-32.png'), 'favicon-32.png', BOTH);
 copy(join(pkgDir('qrcode-generator'), 'dist', 'qrcode.js'), 'qrcode.js', BOTH);
 
 // --- samo aplikacija ---
+for (const icon of ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png']) copy(join(ROOT, 'public', 'img', icon), icon, ['app']);
 copy(join(ROOT, 'pozivnica', 'zk-qr.js'), 'zk-qr.js', ['app']);
 copy(join(pkgDir('html5-qrcode'), 'html5-qrcode.min.js'), 'html5-qrcode.min.js', ['app']);
 copy(join(pkgDir('exceljs'), 'dist', 'exceljs.min.js'), 'exceljs.min.js', ['app']);

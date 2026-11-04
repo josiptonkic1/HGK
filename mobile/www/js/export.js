@@ -173,6 +173,16 @@ export async function shareFile(bytes, filename, mime) {
     await cap.nativePromise('Share', 'share', { title: filename, files: [uri], dialogTitle: 'Podijeli ili spremi' });
     return;
   }
+  // Web verzija na mobitelu: izbornik "Podijeli" s datotekom (Chrome na Androidu).
+  const file = new File([bytes], filename, { type: mime });
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: filename });
+      return;
+    } catch (err) {
+      if (err?.name === 'AbortError') return;
+    }
+  }
   const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
   const a = Object.assign(document.createElement('a'), { href: url, download: filename });
   document.body.appendChild(a);
