@@ -1,6 +1,6 @@
 ﻿// Service worker web aplikacije: omoguÄ‡uje instalaciju i otvaranje suÄelja bez mreÅ¾e.
 // Podaci (/api) se NIKAD ne spremaju u predmemoriju - uvijek idu na posluÅ¾itelj.
-const CACHE = 'zk31-v15';
+const CACHE = 'zk31-v16';
 const SHELL = [
   '/staff', '/prijava', '/pozivnica', '/raspored',
   '/css/style.css', '/js/common.js', '/js/staff.js', '/js/login.js', '/js/invite.js', '/js/seating.js', '/js/seatplan.js', '/js/raspored.js',

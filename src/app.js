@@ -157,6 +157,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
   app.get('/prijava', page('login.html'));
   app.get('/staff', page('staff.html'));
   app.get('/raspored', page('raspored.html'));
+  app.get('/raspored/:token', page('raspored.html'));
 
   app.use('/vendor/html5-qrcode.min.js', (req, res) => res.sendFile(require.resolve('html5-qrcode/html5-qrcode.min.js')));
   app.use('/vendor/fontsource', express.static(join(dirname(require.resolve('@fontsource/montserrat/package.json')), '..'), { maxAge: '7d' }));
@@ -230,6 +231,28 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
   });
 
   // ---------- moderator + admin ----------
+  // Javni pregled rasporeda (link za dijeljenje): samo imena, mjesta i dolazak - bez e-maila i napomena.
+  app.get('/api/seatmap/:token', (req, res) => {
+    if (!store.checkShareToken(db, req.params.token)) {
+      throw new AppError(404, 'not_found', 'Link za pregled rasporeda ne postoji ili je isključen.');
+    }
+    res.set('Cache-Control', 'no-store');
+    const invitations = store.listInvitations(db)
+      .filter((i) => i.status === 'confirmed')
+      .map((i) => ({
+        id: i.id, status: i.status, fullName: i.fullName, personCount: i.personCount, seats: i.seats,
+        guests: i.guests.map((g) => ({ fullName: g.fullName, isCompanion: g.isCompanion, checkedInAt: g.checkedInAt })),
+      }));
+    res.json({ invitations, share: true });
+  });
+
+  app.get('/api/admin/seatmap-share', admin, (req, res) => res.json({ token: store.getShareToken(db) }));
+  app.post('/api/admin/seatmap-share', admin, (req, res) => res.json({ token: store.newShareToken(db) }));
+  app.delete('/api/admin/seatmap-share', admin, (req, res) => {
+    store.revokeShareToken(db);
+    res.json({ token: null });
+  });
+
   app.get('/api/staff/invitations', staff, (req, res) => {
     const list = store.listInvitations(db);
     res.json({ invitations: list, stats: store.computeStats(list) });

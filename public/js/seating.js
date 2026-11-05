@@ -1,7 +1,7 @@
 // Kartica "Tlocrt": admin odabere uzvanika koji je potvrdio dolazak i klikne mjesta na tlocrtu.
 // Spremanje može odmah poslati e-mail s mjestom. Nacrt (još nespremljena mjesta) preživi
 // osvježavanje popisa svakih 15 s jer se crtež samo ažurira, ne gradi ispočetka.
-import { $, api, esc, normalize, toast, companionLabel, fmtDateTime } from './common.js';
+import { $, api, esc, normalize, toast, companionLabel, fmtDateTime, copyText } from './common.js';
 import { allSeats, seatLabel, svgMarkup } from './seatplan.js';
 
 let getList = () => [];
@@ -211,6 +211,40 @@ async function sendBulk() {
   onSaved(null);
 }
 
+// ---------- link za dijeljenje ----------
+let shareToken = null;
+const shareUrl = () => `${location.origin}/raspored/${shareToken}`;
+
+function renderShare() {
+  const body = $('#share-body');
+  if (!shareToken) {
+    body.innerHTML = '<button type="button" class="btn btn-outline btn-sm btn-block" data-share="new">Napravi link za dijeljenje</button>';
+    return;
+  }
+  body.innerHTML = `<div class="link-box"><span>${esc(shareUrl())}</span></div>
+    <div class="actions">
+      <button type="button" class="btn btn-gold btn-sm" data-share="copy">Kopiraj link</button>
+      <a class="btn btn-outline btn-sm" href="${esc(shareUrl())}" target="_blank" rel="noopener">Otvori ↗</a>
+      <button type="button" class="btn btn-ghost btn-sm" data-share="renew">Novi link</button>
+      <button type="button" class="btn btn-danger btn-sm" data-share="off">Isključi</button>
+    </div>`;
+}
+
+async function shareAction(kind) {
+  try {
+    if (kind === 'copy') return copyText(shareUrl());
+    if (kind === 'renew' && !confirm('Napraviti novi link? Stari link odmah prestaje raditi.')) return;
+    if (kind === 'off' && !confirm('Isključiti link? Tko ga ima više neće moći vidjeti raspored.')) return;
+    const res = await api('/api/admin/seatmap-share', { method: kind === 'off' ? 'DELETE' : 'POST' });
+    shareToken = res.token;
+    renderShare();
+    if (shareToken) toast('Link je napravljen – kliknite „Kopiraj link” i pošaljite ga.');
+    else toast('Link za dijeljenje je isključen.');
+  } catch (err) {
+    toast(err.message, { error: true });
+  }
+}
+
 function setZoom(z) {
   zoom = Math.min(3, Math.max(1, z));
   $('#seat-plan svg').style.width = `${zoom * 100}%`;
@@ -248,6 +282,11 @@ export function setupSeating({ list, saved }) {
     renderSide();
   });
   $('#seat-bulk').addEventListener('click', sendBulk);
+  $('#share-body').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-share]');
+    if (b) shareAction(b.dataset.share);
+  });
+  api('/api/admin/seatmap-share').then((r) => { shareToken = r.token; renderShare(); }).catch(() => {});
   $('#seat-zoom-in').addEventListener('click', () => setZoom(zoom + 0.5));
   $('#seat-zoom-out').addEventListener('click', () => setZoom(zoom - 0.5));
   render();

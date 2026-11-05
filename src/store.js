@@ -90,6 +90,29 @@ export function updateSettings(db, patch) {
   return s;
 }
 
+// ---------- link za dijeljenje rasporeda ----------
+// Tajni token za /raspored/<token>: pregled bez prijave. Namjerno nije dio getSettings().
+const SHARE_KEY = 'seatmapShareToken';
+export function getShareToken(db) {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(SHARE_KEY);
+  return row ? JSON.parse(row.value) : null;
+}
+export function newShareToken(db) {
+  const token = newToken(18);
+  db.prepare('INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(SHARE_KEY, JSON.stringify(token));
+  return token;
+}
+export function revokeShareToken(db) {
+  db.prepare('DELETE FROM settings WHERE key = ?').run(SHARE_KEY);
+}
+export function checkShareToken(db, candidate) {
+  const token = getShareToken(db);
+  if (!token || typeof candidate !== 'string') return false;
+  const a = Buffer.from(token);
+  const b = Buffer.from(candidate);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 // ---------- pozivnice ----------
 
 function loadGuests(db, invitationIds) {

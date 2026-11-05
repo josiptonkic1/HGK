@@ -128,6 +128,36 @@ describe('tlocrt: dodjela sjedećih mjesta', () => {
     assert.equal((await ctx.anon().get('/api/staff/invitations')).status, 401, 'bez prijave nema podataka');
   });
 
+  test('link za dijeljenje: bez prijave, bez e-mailova, može se zamijeniti i isključiti', async () => {
+    const { ctx, a, ivan, pending } = await seeded();
+    await put(a, ivan, { seats: ['P-1-1', 'P-1-2'] });
+    assert.equal((await a.get('/api/admin/seatmap-share')).body.token, null);
+    assert.equal((await ctx.anon().get('/api/seatmap/nesto')).status, 404, 'bez linka nema pristupa');
+
+    const m = await ctx.moderator();
+    assert.equal((await m.post('/api/admin/seatmap-share')).status, 403, 'samo admin pravi link');
+
+    const t1 = (await a.post('/api/admin/seatmap-share')).body.token;
+    assert.ok(t1.length >= 20);
+    assert.equal((await ctx.anon().get(`/raspored/${t1}`)).status, 200);
+    const pub = await ctx.anon().get(`/api/seatmap/${t1}`);
+    assert.equal(pub.status, 200);
+    const inv = pub.body.invitations.find((i) => i.id === ivan.id);
+    assert.deepEqual(inv.seats, ['P-1-1', 'P-1-2']);
+    assert.equal(inv.guests[1].fullName, 'Maja Horvat');
+    assert.ok(!pub.body.invitations.some((i) => i.id === pending.id), 'samo potvrđeni');
+    assert.doesNotMatch(JSON.stringify(pub.body), /@primjer\.hr|token|qrCode|note/, 'bez e-mailova, tokena i napomena');
+
+    const t2 = (await a.post('/api/admin/seatmap-share')).body.token;
+    assert.notEqual(t2, t1);
+    assert.equal((await ctx.anon().get(`/api/seatmap/${t1}`)).status, 404, 'stari link više ne radi');
+    assert.equal((await ctx.anon().get(`/api/seatmap/${t2}`)).status, 200);
+
+    await a.delete('/api/admin/seatmap-share');
+    assert.equal((await ctx.anon().get(`/api/seatmap/${t2}`)).status, 404, 'isključen link ne radi');
+    assert.ok(!('seatmapShareToken' in (await a.get('/api/admin/settings')).body.settings));
+  });
+
   test('moderator ne može dodjeljivati mjesta', async () => {
     const { ctx, ivan } = await seeded();
     const m = await ctx.moderator();

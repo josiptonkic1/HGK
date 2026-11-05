@@ -9,7 +9,10 @@ let bySeat = new Map(); // oznaka mjesta -> { inv, person, index }
 let invitations = [];
 let pinned = null; // odabrano mjesto (oznaka)
 let zoom = 1;
+let stopped = false;
 const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
+// /raspored/<token> = link za dijeljenje: bez prijave, bez e-mailova i napomena
+const shareToken = location.pathname.match(/^\/raspored\/([\w-]+)/)?.[1] || null;
 
 const people = (inv) => (inv.guests.length ? inv.guests : [{ fullName: inv.fullName, isCompanion: false, checkedInAt: null }]);
 
@@ -60,6 +63,9 @@ function personBlock(hit, { brief = false } = {}) {
       <span class="rv-dim">${seat ? esc(seatLabel(seat)) : 'bez mjesta'}${p.checkedInAt ? ` · ✓ ${fmtTime(p.checkedInAt)}` : ''}</span>
     </button></li>`;
   }).join('');
+  if (shareToken) return `${head}
+    <h3 class="rv-h">${party.length > 1 ? `Dolaze zajedno (${party.length})` : 'Dolazi sam/a'}</h3>
+    <ul class="rv-partylist">${rows}</ul>`;
   const info = [
     inv.email ? ['E-mail', `<a href="mailto:${esc(inv.email)}">${esc(inv.email)}</a>`] : null,
     ['Dolazak potvrđen', esc(fmtDateTime(inv.respondedAt)) || '—'],
@@ -107,7 +113,7 @@ function search(q) {
   const words = normalize(q).split(/\s+/).filter(Boolean);
   const out = [];
   for (const [seat, hit] of bySeat) {
-    const hay = normalize(`${hit.person.fullName} ${hit.inv.fullName} ${hit.inv.email}`);
+    const hay = normalize(`${hit.person.fullName} ${hit.inv.fullName} ${hit.inv.email || ''}`);
     if (words.every((w) => hay.includes(w))) out.push({ seat, hit });
   }
   return out.sort((a, b) => a.hit.person.fullName.localeCompare(b.hit.person.fullName, 'hr'));
@@ -155,21 +161,29 @@ function setZoom(z) {
 
 async function load() {
   try {
-    ({ invitations } = await api('/api/staff/invitations'));
+    ({ invitations } = await api(shareToken ? `/api/seatmap/${shareToken}` : '/api/staff/invitations'));
     index();
     paint();
     renderCard();
     if (!$('#rv-results').hidden) renderResults();
   } catch (err) {
-    if (err.status === 401) location.replace('/prijava');
+    if (err.status === 401 && !shareToken) return location.replace('/prijava');
+    if (err.status === 404 && shareToken) {
+      $('.rv').innerHTML = `<div class="panel rv-gone"><h2>Link nije aktivan</h2><p class="hint mt0">${esc(err.message)} Zatražite novi link od organizatora.</p></div>`;
+      stopped = true;
+    }
   }
 }
 
 async function init() {
-  try {
-    ({ user } = await api('/api/auth/me'));
-  } catch {
-    return location.replace('/prijava');
+  if (shareToken) {
+    document.querySelector('.topbar .who').innerHTML = '<span class="badge badge-role">Pregled rasporeda</span>';
+  } else {
+    try {
+      ({ user } = await api('/api/auth/me'));
+    } catch {
+      return location.replace('/prijava');
+    }
   }
   $('#top-logo').innerHTML = logoHtml({ small: true });
   const plan = $('#rv-plan');
@@ -205,8 +219,9 @@ async function init() {
   $('#rv-zoom-out').addEventListener('click', () => setZoom(zoom - 0.5));
 
   await load();
+  if (stopped) return;
   plan.scrollLeft = (plan.scrollWidth - plan.clientWidth) / 2;
-  setInterval(() => { if (!document.hidden) load(); }, 20000);
+  setInterval(() => { if (!document.hidden && !stopped) load(); }, 20000);
 }
 
 init();
