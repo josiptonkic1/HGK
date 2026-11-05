@@ -34,13 +34,14 @@ export function personRows(invitations, filter = 'all') {
     const persons = inv.guests.length
       ? inv.guests
       : [{ id: null, fullName: inv.fullName, isCompanion: false, checkedInAt: null }];
-    for (const p of persons) {
-      if (filter === 'checked_in' && !p.checkedInAt) continue;
+    persons.forEach((p, idx) => {
+      if (filter === 'checked_in' && !p.checkedInAt) return;
       rows.push({
         invitationId: inv.id,
         name: p.isCompanion ? companionLabel(p.fullName) : p.fullName,
         isCompanion: p.isCompanion,
         host: p.isCompanion ? inv.fullName : '',
+        seat: inv.seatLabels?.[idx] || '',
         email: p.isCompanion ? '' : inv.email,
         status: STATUS_LABEL[inv.status],
         checkedIn: p.checkedInAt ? 'Da' : 'Ne',
@@ -48,7 +49,7 @@ export function personRows(invitations, filter = 'all') {
         respondedAt: formatDate(inv.respondedAt),
         source: { invite: 'Osobni link', open: 'Opći link', admin: 'Dodao admin' }[inv.source],
       });
-    }
+    });
   }
   return rows;
 }
@@ -73,6 +74,7 @@ const COLUMNS = [
   { header: 'Rb.', key: 'rb', width: 6 },
   { header: 'Ime i prezime', key: 'name', width: 34 },
   { header: 'Pratnja od', key: 'host', width: 26 },
+  { header: 'Mjesto', key: 'seat', width: 28 },
   { header: 'E-mail', key: 'email', width: 28 },
   { header: 'Status', key: 'status', width: 15 },
   { header: 'Odgovor', key: 'respondedAt', width: 18 },
@@ -114,7 +116,7 @@ export async function buildXlsx(invitations, filter = 'all') {
         row.getCell('name').font = { italic: true };
       }
     }
-    ws.autoFilter = { from: 'A1', to: 'I1' };
+    ws.autoFilter = { from: 'A1', to: 'J1' };
   }
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
@@ -123,10 +125,11 @@ export async function buildXlsx(invitations, filter = 'all') {
 
 const PDF_COLS = [
   { key: 'rb', label: 'Rb.', width: 32 },
-  { key: 'name', label: 'Ime i prezime', width: 250 },
-  { key: 'host', label: 'Pratnja od', width: 210 },
-  { key: 'status', label: 'Status', width: 120 },
-  { key: 'checkedInAt', label: 'Dolazak', width: 140 },
+  { key: 'name', label: 'Ime i prezime', width: 205 },
+  { key: 'host', label: 'Pratnja od', width: 170 },
+  { key: 'seat', label: 'Mjesto', width: 150 },
+  { key: 'status', label: 'Status', width: 95 },
+  { key: 'checkedInAt', label: 'Dolazak', width: 105 },
 ];
 
 export function buildPdf(invitations, filter = 'all') {

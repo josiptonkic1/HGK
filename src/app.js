@@ -8,7 +8,7 @@ import { EVENT } from './event.js';
 import * as store from './store.js';
 import { AppError } from './store.js';
 import { buildPdf, buildXlsx, FILTERS } from './export.js';
-import { invitationEmail, reminderEmail, qrEmail } from './mail.js';
+import { invitationEmail, reminderEmail, qrEmail, seatEmail } from './mail.js';
 
 const require = createRequire(import.meta.url);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -104,7 +104,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
   // ---------- e-mail ----------
   const baseUrl = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
   const inviteLink = (req, inv) => `${baseUrl(req)}/p/${inv.token}`;
-  const MAIL_KINDS = ['invite', 'reminder', 'qr'];
+  const MAIL_KINDS = ['invite', 'reminder', 'qr', 'seat'];
   const MAIL_OFF = 'Slanje e-maila nije podešeno (BREVO_API_KEY i MAIL_FROM na poslužitelju).';
 
   // Sastavi e-mail (isti za pregled i za slanje). forPreview: QR slika uvijek s poveznice.
@@ -116,6 +116,10 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
       const png = await QRCode.toBuffer(inv.qrCode, { errorCorrectionLevel: 'M', margin: 3, width: 600 });
       const imageUrl = forPreview || mailer?.inlineImages === false ? `${baseUrl(req)}/api/invite/${inv.token}/qr.png` : undefined;
       return qrEmail(inv, link, png, { imageUrl });
+    }
+    if (kind === 'seat') {
+      if (!inv.seats.length) throw new AppError(400, 'validation', `${inv.fullName} još nema dodijeljeno mjesto.`);
+      return seatEmail(inv, link);
     }
     if (kind === 'reminder') return reminderEmail(inv, link);
     return invitationEmail(inv, link);
@@ -289,6 +293,20 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
     res.json({ invitation: store.updateInvitation(db, req.params.id, req.body || {}) });
   });
 
+  // Sjedeća mjesta: { seats: ['P-5-12', ...], notify: true } -> spremi i (po želji) pošalji e-mail
+  app.put('/api/admin/invitations/:id/seats', admin, wrap(async (req, res) => {
+    const inv = store.setSeats(db, req.params.id, req.body?.seats ?? []);
+    if (!req.body?.notify || !inv.seats.length) return res.json({ invitation: inv, mail: 'skipped' });
+    if (!mailer) return res.json({ invitation: inv, mail: 'disabled' });
+    if (!inv.email) return res.json({ invitation: inv, mail: 'no_email' });
+    try {
+      res.json({ invitation: await sendMail('seat', inv, req), mail: 'sent' });
+    } catch (err) {
+      console.error('Slanje e-maila s mjestom nije uspjelo:', err.message);
+      res.json({ invitation: inv, mail: 'failed', message: err.message });
+    }
+  }));
+
   app.delete('/api/admin/invitations/:id', admin, (req, res) => {
     store.deleteInvitation(db, req.params.id);
     res.json({ ok: true });
@@ -362,6 +380,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
   const bulkTargets = (kind, list) => list.filter((i) => {
     if (kind === 'invite') return i.status === 'pending' && !i.inviteSentAt;
     if (kind === 'reminder') return i.status === 'pending' && Boolean(i.inviteSentAt);
+    if (kind === 'seat') return i.status === 'confirmed' && i.seats.length > 0 && !i.seatSentAt;
     return i.status === 'confirmed' && !i.qrSentAt;
   });
 

@@ -113,10 +113,32 @@ const recipient = (inv) => {
 const button = (href, label) =>
   `<p style="text-align:center;margin:26px 0;"><a href="${esc(href)}" style="display:inline-block;background:#d9b15c;color:#1b1408;text-decoration:none;font-weight:700;font-family:Arial,sans-serif;padding:14px 28px;border-radius:999px;">${esc(label)}</a></p>`;
 
+// Popis osoba; uz svaku osobu i njezino mjesto ako je dodijeljeno (redom: nositelj, pratnja).
 const people = (inv) =>
   `<ul style="list-style:none;padding:0;margin:14px 0;">${inv.guests
-    .map((g) => `<li style="padding:6px 0;border-bottom:1px solid #3a3124;">${g.isCompanion ? `${esc(g.fullName)} – pratnja` : `<strong>${esc(g.fullName)}</strong>`}</li>`)
+    .map((g, i) => {
+      const seat = inv.seatLabels?.[i];
+      const who = g.isCompanion ? `${esc(g.fullName)} – pratnja` : `<strong>${esc(g.fullName)}</strong>`;
+      return `<li style="padding:8px 0;border-bottom:1px solid #3a3124;">${who}${seat ? `<br><span style="color:#f2d892;">${esc(seat)}</span>` : ''}</li>`;
+    })
     .join('')}</ul>`;
+
+export function seatEmail(inv, link) {
+  const subject = named(`Vaše sjedeće mjesto – ${EVENT.title}`, inv);
+  const n = inv.seatLabels.length;
+  const html = layout(subject, `
+${recipient(inv)}
+<p>Poštovani,</p>
+<p>${n > 1 ? 'dodijeljena su Vam sjedeća mjesta' : 'dodijeljeno Vam je sjedeće mjesto'} na ${esc(EVENT.titleAccusative || EVENT.title)} u Hrvatskom narodnom kazalištu u Zagrebu:</p>
+${people(inv)}
+<p style="border:1px solid #d8b25e;border-radius:10px;padding:14px;background:#1f1a12;">
+  Ulaznice s ovim mjestima preuzimate na blagajni HNK uz <strong>QR kod</strong> koji ste dobili nakon potvrde dolaska.
+</p>
+${button(link, 'Otvori svoju pozivnicu')}`);
+  const lines = inv.guests.map((g, i) => `${g.fullName}${g.isCompanion ? ' (pratnja)' : ''}: ${inv.seatLabels[i] || '-'}`).join('\n');
+  const text = `Sjedeća mjesta – ${EVENT.title}\n${lines}\n\nVaša pozivnica: ${link}`;
+  return { subject, html, text };
+}
 
 export function invitationEmail(inv, link) {
   const subject = named(`Pozivnica – ${EVENT.title}`, inv);

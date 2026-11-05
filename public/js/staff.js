@@ -1,3 +1,4 @@
+import { setupSeating, renderSeating } from './seating.js';
 import { $, $$, api, esc, logoHtml, fmtDateTime, fmtTime, normalize, toast, copyText, companionEditor, companionLabel, setupInstallButton, inMobileApp } from './common.js';
 
 if (!inMobileApp) setupInstallButton(document.getElementById('btn-install')); // u Android aplikaciji je već "instalirano"
@@ -34,7 +35,7 @@ async function loadList({ silent = false } = {}) {
     renderList();
     renderScanResults();
     renderCheckinLog();
-    if (isAdmin()) renderMailList();
+    if (isAdmin()) { renderMailList(); renderSeating(); }
   } catch (err) {
     if (err.status === 401) return location.replace('/prijava');
     if (!silent) toast(err.message, { error: true });
@@ -56,6 +57,7 @@ function selectTab(name) {
   if (name !== 'scan') stopCamera();
   if (name === 'settings') loadSettings();
   if (name === 'mail') loadMail();
+  if (name === 'seats') renderSeating();
   try { sessionStorage.setItem('zk_tab', name); } catch { /* */ }
 }
 
@@ -117,6 +119,7 @@ function renderList() {
       return `<tr data-id="${inv.id}">
         <td><div class="main-name">${esc(inv.fullName)}${dot(primary)}</div>${inv.hasName ? "" : "<div class=\"hint\">ime nije upisano – osoba ga upisuje sama</div>"}
           ${comps.map((c) => `<div class="comp-name">${esc(companionLabel(c.fullName))}${dot(c)}</div>`).join('')}
+          ${inv.seats.length ? `<div class="seat-chip" title="Sjedeća mjesta">${inv.seatLabels.map(esc).join(' · ')}</div>` : ''}
           ${isAdmin() ? mailLine(inv) : ''}</td>
         <td>${badge(inv.status)}</td>
         <td>${inv.status === 'confirmed' ? `${inv.checkedInCount}/${inv.personCount}` : '—'}</td>
@@ -196,6 +199,7 @@ function openParty(inv, { fromScan = false } = {}) {
       ${people.map((g) => `<li class="${g.checkedInAt ? 'done' : ''}">
         <label class="check">${g.checkedInAt || !g.id ? '' : `<input type="checkbox" data-guest="${g.id}" checked>`}
           <span>${g.isCompanion ? esc(companionLabel(g.fullName)) : `<strong>${esc(g.fullName)}</strong>`}
+          ${inv.seatLabels[people.indexOf(g)] ? `<br><span class="seat-chip">${esc(inv.seatLabels[people.indexOf(g)])}</span>` : ''}
           ${g.checkedInAt ? `<br><span class="when">✓ Došao ${fmtTime(g.checkedInAt)}${g.checkedInBy ? ` · ${esc(g.checkedInBy)}` : ''}</span>` : ''}</span></label>
         ${g.checkedInAt ? `<button class="btn btn-ghost btn-sm" data-undo="${g.id}">Poništi</button>` : ''}
       </li>`).join('')}
@@ -946,6 +950,7 @@ async function init() {
     setupMail();
     setupSettings();
     loadSettings();
+    setupSeating({ list: () => invitations, saved: (inv) => (inv ? replaceInvitation(inv) : loadList({ silent: true })) });
   }
 
   let initial = 'scan';

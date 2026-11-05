@@ -36,6 +36,7 @@
     <button role="tab" data-tab="list" aria-selected="false"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5.6M18 14.5a5 5 0 0 1 2.5 4.5"/></svg><span>Popis uzvanika</span></button>
     <button role="tab" data-tab="add" aria-selected="false" data-admin hidden><svg class="ti" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.2"/><path d="M4 19a6 6 0 0 1 10.5-4"/><path d="M18 13v6M15 16h6"/></svg><span>Dodaj uzvanike</span></button>
     <button role="tab" data-tab="mail" aria-selected="false" data-admin hidden><svg class="ti" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg><span>E-mail</span></button>
+    <button role="tab" data-tab="seats" aria-selected="false" data-admin hidden><svg class="ti" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4"/><path d="M4 11h16v4H4z"/><path d="M6 15v4M18 15v4"/></svg><span>Tlocrt</span></button>
     <button role="tab" data-tab="export" aria-selected="false" data-admin hidden><svg class="ti" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M5 19h14"/></svg><span>Izvoz</span></button>
     <button role="tab" data-tab="settings" aria-selected="false" data-admin hidden><svg class="ti" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Postavke i korisnici</span></button>
   </nav>
@@ -191,6 +192,42 @@
           <thead><tr><th>Uzvanik</th><th>Poslano</th><th></th></tr></thead>
           <tbody id="mail-list"></tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- TLOCRT / SJEDEĆA MJESTA (admin) -->
+    <section data-panel="seats" hidden>
+      <div class="seat-layout">
+        <div class="panel seat-side">
+          <h2>Sjedeća mjesta</h2>
+          <p class="hint mt0" id="seat-summary"></p>
+          <div class="seat-tools">
+            <input type="search" id="seat-search" placeholder="Pretraži uzvanike…" aria-label="Pretraži uzvanike">
+            <select id="seat-filter" aria-label="Prikaz">
+              <option value="missing">Bez (svih) mjesta</option>
+              <option value="all">Svi koji dolaze</option>
+              <option value="done">S dodijeljenim mjestom</option>
+            </select>
+          </div>
+          <ul class="seat-list" id="seat-list"></ul>
+          <button type="button" class="btn btn-outline btn-sm btn-block" id="seat-bulk" disabled></button>
+        </div>
+        <div class="panel seat-main">
+          <div class="seat-top">
+            <div class="seat-legend">
+              <span><i class="lg-free"></i>slobodno</span>
+              <span><i class="lg-mine"></i>odabrani uzvanik</span>
+              <span><i class="lg-taken"></i>zauzeto</span>
+            </div>
+            <div class="seat-zoom">
+              <button type="button" class="btn btn-outline btn-icon" id="seat-zoom-out" aria-label="Umanji">−</button>
+              <span id="seat-zoom-val">100 %</span>
+              <button type="button" class="btn btn-outline btn-icon" id="seat-zoom-in" aria-label="Uvećaj">+</button>
+            </div>
+          </div>
+          <div class="seat-plan" id="seat-plan"></div>
+          <div class="seat-bar" id="seat-bar"></div>
+        </div>
       </div>
     </section>
 

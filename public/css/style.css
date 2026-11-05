@@ -523,3 +523,63 @@ input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) { 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Tlocrt / sjedeća mjesta ---------- */
+.seat-layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 18px; align-items: start; }
+.seat-side { position: sticky; top: 78px; }
+.seat-tools { display: grid; gap: 8px; margin-bottom: 10px; }
+.seat-list { list-style: none; margin: 0 0 12px; padding: 0; max-height: 52vh; overflow-y: auto; display: grid; gap: 6px; }
+.seat-list .empty { color: var(--muted); font-size: 14px; padding: 10px 2px; }
+.seat-list button {
+  width: 100%; text-align: left; display: grid; gap: 2px; cursor: pointer;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px;
+  transition: border-color .15s, background .15s;
+}
+.seat-list button:hover { border-color: var(--gold-3); }
+.seat-list button[aria-pressed=true] { border-color: var(--gold); background: rgba(216, 178, 94, .1); box-shadow: inset 3px 0 0 var(--gold); }
+.sl-name { font-weight: 600; }
+.sl-plus { color: var(--muted); font-weight: 400; font-size: 13px; }
+.sl-seat { font-size: 12.5px; }
+.sl-none { color: var(--warn); }
+.sl-part { color: #f2cd92; }
+.sl-ok { color: var(--gold-2); }
+.seat-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.seat-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.seat-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.lg-free { background: #4a3f2e; border: 1px solid #6b5a3e; }
+.lg-mine { background: var(--gold-2); box-shadow: 0 0 6px var(--gold); }
+.lg-taken { background: #6a2e28; }
+.seat-zoom { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.seat-zoom span { min-width: 46px; text-align: center; font-variant-numeric: tabular-nums; }
+.seat-main, .seat-side { min-width: 0; }
+.seat-plan {
+  overflow: auto; border-radius: 12px; border: 1px solid var(--line); max-height: 72vh;
+  background: radial-gradient(700px 360px at 50% 0, rgba(216, 178, 94, .07), transparent 70%), #0f0d09;
+}
+.seat-svg { display: block; width: 100%; min-width: 720px; height: auto; user-select: none; }
+.sp-stage { fill: rgba(216, 178, 94, .12); stroke: var(--gold-3); stroke-width: 1.5; }
+.sp-stage-t, .sp-sec { fill: var(--gold); font: 700 14px var(--font-head); letter-spacing: 4px; text-anchor: middle; }
+.sp-sec { fill: rgba(216, 178, 94, .45); font-size: 12px; }
+.sp-box { fill: rgba(255, 255, 255, .02); stroke: #4d4130; stroke-width: 1; }
+.sp-boxno, .sp-row { fill: var(--muted); font: 600 10px var(--font-head); text-anchor: middle; }
+.seat { fill: #4a3f2e; stroke: #6b5a3e; stroke-width: 1; cursor: pointer; transition: fill .12s, r .12s; }
+.seat:hover { fill: #8a7140; r: 7; }
+.seat.taken { fill: #6a2e28; stroke: #8d4038; }
+.seat.taken:hover { fill: #a3473d; }
+.seat.mine { fill: var(--gold-2); stroke: #fff1c1; filter: drop-shadow(0 0 4px rgba(242, 216, 146, .9)); r: 6.6; }
+.seat-bar { margin-top: 14px; }
+.sb-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.sb-name { font: 600 18px var(--font-head); color: var(--gold-2); }
+.sb-people { list-style: none; margin: 10px 0; padding: 0; }
+.sb-people li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(58, 49, 36, .6); flex-wrap: wrap; }
+.sb-seat { color: var(--gold-2); font-weight: 600; }
+.sb-none { color: var(--muted); font-style: italic; }
+.seat-chip {
+  display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 600; color: var(--gold-2);
+  background: rgba(216, 178, 94, .1); border: 1px solid rgba(216, 178, 94, .35); border-radius: 999px; padding: 1px 9px;
+}
+@media (max-width: 900px) {
+  .seat-layout { grid-template-columns: minmax(0, 1fr); }
+  .seat-side { position: static; }
+  .seat-list { max-height: 260px; }
+}

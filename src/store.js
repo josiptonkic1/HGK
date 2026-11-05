@@ -1,6 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { tx } from './db.js';
 import { EVENT } from './event.js';
+import { isSeat, seatLabel } from '../public/js/seatplan.js';
 
 export class AppError extends Error {
   constructor(status, code, message) {
@@ -128,11 +129,22 @@ function serialize(inv, guests) {
     inviteSentAt: inv.invite_sent_at,
     reminderSentAt: inv.reminder_sent_at,
     qrSentAt: inv.qr_sent_at,
+    seatSentAt: inv.seat_sent_at,
     createdAt: inv.created_at,
     guests: g,
     personCount: g.length || 1,
     checkedInCount: g.filter((x) => x.checkedInAt).length,
+    ...seatInfo(inv, g.length || 1),
   };
+}
+
+// Mjesta vrijede samo dok je dolazak potvrđen i najviše onoliko koliko osoba dolazi.
+function seatInfo(inv, personCount) {
+  let seats = [];
+  try { seats = JSON.parse(inv.seats || '[]'); } catch { /* */ }
+  if (inv.status !== 'confirmed' || !Array.isArray(seats)) seats = [];
+  seats = seats.filter(isSeat).slice(0, personCount);
+  return { seats, seatLabels: seats.map(seatLabel) };
 }
 
 function fetchOne(db, where, value) {
@@ -290,7 +302,31 @@ export function updateInvitation(db, id, input) {
   });
 }
 
-const SENT_COLUMN = { invite: 'invite_sent_at', reminder: 'reminder_sent_at', qr: 'qr_sent_at' };
+/** Dodjela sjedećih mjesta potvrđenoj pozivnici. seats: popis oznaka (može biti prazan). */
+export function setSeats(db, id, seats) {
+  const inv = getInvitationById(db, id);
+  if (!inv) throw new AppError(404, 'not_found', 'Uzvanik nije pronađen.');
+  if (!Array.isArray(seats)) throw new AppError(400, 'validation', 'Neispravan popis mjesta.');
+  const list = [...new Set(seats.map(String))];
+  if (list.length && inv.status !== 'confirmed') {
+    throw new AppError(400, 'validation', 'Mjesto se dodjeljuje tek kad uzvanik potvrdi dolazak.');
+  }
+  const bad = list.find((s) => !isSeat(s));
+  if (bad) throw new AppError(400, 'validation', `Nepoznato mjesto: ${bad}`);
+  if (list.length > inv.personCount) {
+    throw new AppError(400, 'validation', `${inv.fullName} dolazi s ${inv.personCount} ${inv.personCount === 1 ? 'osobom' : 'osobe'}, a odabrano je ${list.length} mjesta.`);
+  }
+  return tx(db, () => {
+    const taken = new Map();
+    for (const other of listInvitations(db)) if (other.id !== inv.id) for (const s of other.seats) taken.set(s, other.fullName);
+    const clash = list.find((s) => taken.has(s));
+    if (clash) throw new AppError(409, 'seat_taken', `${seatLabel(clash)} već je dodijeljeno: ${taken.get(clash)}.`);
+    db.prepare('UPDATE invitations SET seats = ? WHERE id = ?').run(JSON.stringify(list), inv.id);
+    return getInvitationById(db, inv.id);
+  });
+}
+
+const SENT_COLUMN = { invite: 'invite_sent_at', reminder: 'reminder_sent_at', qr: 'qr_sent_at', seat: 'seat_sent_at' };
 export function markSent(db, id, kind) {
   const col = SENT_COLUMN[kind];
   if (!col) throw new Error('nepoznata vrsta e-maila');
