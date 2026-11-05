@@ -172,6 +172,24 @@
         </form>
       </div>
       <div id="mail-result"></div>
+
+      <div class="panel">
+        <h2>Tko nije potvrdio dolazak</h2>
+        <div class="toolbar">
+          <select id="mail-filter" aria-label="Prikaz">
+            <option value="all">Svi koji nisu odgovorili</option>
+            <option value="not_invited">Pozivnica još nije poslana</option>
+            <option value="waiting">Pozivnica poslana – čeka se odgovor</option>
+            <option value="no_email">Bez e-maila</option>
+          </select>
+          <input type="search" id="mail-search" placeholder="Pretraži ime ili e-mail…" aria-label="Pretraži" autocomplete="off">
+        </div>
+        <p class="count-line" id="mail-list-count"></p>
+        <table class="table">
+          <thead><tr><th>Uzvanik</th><th>Poslano</th><th></th></tr></thead>
+          <tbody id="mail-list"></tbody>
+        </table>
+      </div>
     </section>
 
     <!-- IZVOZ (admin) -->

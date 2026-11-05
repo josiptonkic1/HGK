@@ -66,7 +66,7 @@ export function logoHtml({ small = false, edition = '31.', dust = true } = {}) {
   const num = esc(edition.replace('.', ''));
   return `<div class="zk-logo${small ? ' small' : ''}" role="img" aria-label="${esc(edition)} Zlatna kuna">
     <span class="num" aria-hidden="true">${num}.</span>
-    <span class="word" aria-hidden="true">ZLATNA<br>KUNA</span>
+    <span class="word" aria-hidden="true">${small ? 'ZLATNA KUNA' : 'ZLATNA<br>KUNA'}</span>
     ${small || !dust ? '' : '<span class="dust" aria-hidden="true"></span>'}
   </div>`;
 }

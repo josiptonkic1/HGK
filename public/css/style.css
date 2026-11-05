@@ -352,3 +352,13 @@ body.staff { background: var(--bg-2); min-height: 100vh; }
 .invite-card { overflow-x: clip; }
 .kuna-canvas { position: absolute; left: -20%; width: 140%; top: 0; height: 100%; pointer-events: none; z-index: 1; }
 .zk-logo .num, .zk-logo .word { position: relative; z-index: 3; }
+
+/* Uska gornja traka panela (mobitel): sve u jednom redu, bez vodoravnog pomicanja */
+.topbar > * { min-width: 0; }
+@media (max-width: 480px) {
+  .topbar { padding: 8px 10px; gap: 8px; }
+  .topbar .zk-logo.small .word { display: none; }
+  .topbar .who { gap: 6px; }
+  .topbar .who .name { display: none; }
+  .topbar .badge { font-size: 11px; padding: 3px 7px; }
+}

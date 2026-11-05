@@ -34,6 +34,7 @@ async function loadList({ silent = false } = {}) {
     renderList();
     renderScanResults();
     renderCheckinLog();
+    if (isAdmin()) renderMailList();
   } catch (err) {
     if (err.status === 401) return location.replace('/prijava');
     if (!silent) toast(err.message, { error: true });
@@ -557,10 +558,69 @@ async function sendOne(inv, kind) {
   }
 }
 
+// Popis onih koji nisu potvrdili: što im je poslano i gumb za sljedeći korak.
+let mailEnabled = false;
+
+function mailStage(inv) {
+  if (!inv.email) return 'no_email';
+  return inv.inviteSentAt ? 'waiting' : 'not_invited';
+}
+
+function renderMailList() {
+  const body = $('#mail-list');
+  if (!body) return;
+  const f = $('#mail-filter').value;
+  const q = $('#mail-search').value;
+  const pending = invitations.filter((i) => i.status === 'pending');
+  const rows = pending
+    .filter((i) => f === 'all' || mailStage(i) === f)
+    .filter((i) => {
+      const words = normalize(q).split(/\s+/).filter(Boolean);
+      const hay = normalize(`${i.fullName} ${i.email}`);
+      return words.every((w) => hay.includes(w));
+    })
+    // prvo oni kojima pozivnica nije poslana, pa oni koji najduže čekaju
+    .sort((a, b) => {
+      const order = { not_invited: 0, waiting: 1, no_email: 2 };
+      return order[mailStage(a)] - order[mailStage(b)]
+        || String(a.reminderSentAt || a.inviteSentAt || '').localeCompare(String(b.reminderSentAt || b.inviteSentAt || ''))
+        || a.lastName.localeCompare(b.lastName, 'hr');
+    });
+  const counts = { not_invited: 0, waiting: 0, no_email: 0 };
+  pending.forEach((i) => counts[mailStage(i)]++);
+  $('#mail-list-count').textContent = `Nije odgovorilo: ${pending.length} · pozivnica nije poslana: ${counts.not_invited} · čeka se odgovor: ${counts.waiting} · bez e-maila: ${counts.no_email}`;
+
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="3" class="empty">${pending.length ? 'Nitko za odabrani prikaz.' : 'Svi pozvani su odgovorili.'}</td></tr>`;
+    return;
+  }
+  body.innerHTML = rows
+    .map((inv) => {
+      const stage = mailStage(inv);
+      const sent = [
+        inv.inviteSentAt ? `pozivnica ${fmtDateTime(inv.inviteSentAt)}` : '',
+        inv.reminderSentAt ? `podsjetnik ${fmtDateTime(inv.reminderSentAt)}` : '',
+      ].filter(Boolean).join('<br>') || '<span class="hint">ništa</span>';
+      let action;
+      if (stage === 'no_email') action = '<button class="btn btn-outline btn-sm" data-mact="edit">Upiši e-mail</button>';
+      else if (!mailEnabled) action = '<button class="btn btn-ghost btn-sm" data-mact="link">Kopiraj link</button>';
+      else if (stage === 'not_invited') action = '<button class="btn btn-gold btn-sm" data-mact="invite">Pošalji pozivnicu</button>';
+      else action = '<button class="btn btn-outline btn-sm" data-mact="reminder">Pošalji podsjetnik</button>';
+      return `<tr data-id="${inv.id}">
+        <td><div class="main-name">${esc(inv.fullName)}</div><div class="hint">${esc(inv.email) || 'bez e-maila'}</div></td>
+        <td class="hint">${sent}</td>
+        <td><div class="row-actions">${action}</div></td>
+      </tr>`;
+    })
+    .join('');
+}
+
 async function loadMail() {
   try {
     const [status, preview] = await Promise.all([api('/api/admin/mail'), api('/api/admin/mail/preview')]);
     $('#mail-actions').hidden = !status.enabled;
+    mailEnabled = status.enabled;
+    renderMailList();
     $('#mail-state').innerHTML = status.enabled
       ? `<div class="alert alert-ok">Slanje e-maila je uključeno. Pošiljatelj: <strong>${esc(status.from)}</strong></div>`
       : `<div class="alert alert-warn"><strong>Slanje e-maila još nije podešeno.</strong> Na poslužitelju treba upisati SMTP postavke
@@ -576,6 +636,26 @@ async function loadMail() {
 }
 
 function setupMail() {
+  $('#mail-filter').addEventListener('input', renderMailList);
+  $('#mail-search').addEventListener('input', renderMailList);
+  $('#mail-list').addEventListener('click', async (e) => {
+    const b = e.target.closest('button[data-mact]');
+    const inv = b && invitations.find((i) => i.id === Number(b.closest('tr').dataset.id));
+    if (!inv) return;
+    const act = b.dataset.mact;
+    if (act === 'edit') return openEdit(inv);
+    if (act === 'link') return copyText(inviteLink(inv));
+    b.disabled = true;
+    b.textContent = 'Šaljem…';
+    const updated = await sendOne(inv, act);
+    if (!updated) {
+      b.disabled = false;
+      b.textContent = act === 'invite' ? 'Pošalji pozivnicu' : 'Pošalji podsjetnik';
+      return;
+    }
+    renderMailList();
+    loadMail();
+  });
   $$('[data-bulk]').forEach((b) =>
     b.addEventListener('click', async () => {
       const kind = b.dataset.bulk;

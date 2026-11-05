@@ -1,6 +1,6 @@
-// Service worker web aplikacije: omogućuje instalaciju i otvaranje sučelja bez mreže.
-// Podaci (/api) se NIKAD ne spremaju u predmemoriju - uvijek idu na poslužitelj.
-const CACHE = 'zk31-v3';
+﻿// Service worker web aplikacije: omoguÄ‡uje instalaciju i otvaranje suÄelja bez mreÅ¾e.
+// Podaci (/api) se NIKAD ne spremaju u predmemoriju - uvijek idu na posluÅ¾itelj.
+const CACHE = 'zk31-v4';
 const SHELL = [
   '/staff', '/prijava', '/pozivnica',
   '/css/style.css', '/js/common.js', '/js/staff.js', '/js/login.js', '/js/invite.js',
@@ -22,7 +22,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Mreža prva (uvijek svježa verzija), predmemorija samo kad nema veze.
+// MreÅ¾a prva (uvijek svjeÅ¾a verzija), predmemorija samo kad nema veze.
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
