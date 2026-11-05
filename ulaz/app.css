@@ -1,0 +1,21 @@
+/* Dodaci za Android aplikaciju (osnovni stil je vendor/style.css iz web aplikacije). */
+body.staff { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+.staff main { padding: 14px 12px 40px; }
+.topbar { padding: 10px 14px; }
+.panel { padding: 16px; }
+.stats { grid-template-columns: repeat(2, 1fr); }
+.stat { cursor: default; }
+.log { list-style: none; padding: 0; margin: 0; }
+.log li { display: flex; justify-content: space-between; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--line); font-size: 15px; }
+.log li:last-child { border-bottom: 0; }
+.log .t { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.log .c { color: var(--muted); font-size: 13px; }
+.results li button { min-height: 56px; }
+.scan-warn { background: var(--warn-bg); border-color: rgba(227, 166, 70, .55); }
+.scan-warn .scan-ok-icon { background: linear-gradient(180deg, #f2c26b, #c98a2b); }
+.scan-warn .scan-ok-title { color: #f2cd92; }
+.scan-err .scan-ok-icon { background: linear-gradient(180deg, #f08a7e, #b8473b); color: #2a0703; }
+.scan-err { background: var(--err-bg); border-color: rgba(224, 103, 90, .55); }
+.scan-err .scan-ok-title { color: #f4b3ab; }
+.modal-backdrop { padding: 16px 10px; align-items: center; }
+.modal { padding: 18px; }

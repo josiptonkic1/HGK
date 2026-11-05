@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0c0a07">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Zlatna kuna – ulaz</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="vendor/favicon-32.png">
+  <link rel="apple-touch-icon" href="vendor/icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Zlatna kuna">
+  <link rel="stylesheet" href="vendor/fonts.css">
+  <link rel="stylesheet" href="vendor/style.css">
+  <link rel="stylesheet" href="app.css">
+  <script src="vendor/zk-qr.js"></script>
+  <script src="vendor/html5-qrcode.min.js" defer></script>
+  <script src="vendor/exceljs.min.js" defer></script>
+  <script src="vendor/pdfkit.standalone.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body class="staff">
+  <!-- PRIJAVA -->
+  <div id="auth" hidden>
+    <main class="login-card">
+      <div class="zk-logo" aria-label="31. Zlatna kuna"><span class="num">31.</span><span class="word">ZLATNA<br>KUNA</span></div>
+      <p class="hint" style="margin-top:8px">Ulaz i skeniranje pozivnica</p>
+
+      <form id="setup-form" class="rsvp" novalidate hidden>
+        <h2 class="gold-text">Prvo pokretanje</h2>
+        <p class="lead">Postavite lozinke za dva korisnika. Korisnička imena su <strong>admin</strong> i <strong>moderator</strong>.</p>
+        <div id="setup-error" class="alert alert-err" role="alert" hidden></div>
+        <h3>Administrator <span class="hint">(korisničko ime: admin)</span></h3>
+        <div class="field"><label for="s-admin">Lozinka</label><input type="password" id="s-admin" autocomplete="new-password"></div>
+        <div class="field"><label for="s-admin2">Ponovite lozinku</label><input type="password" id="s-admin2" autocomplete="new-password"></div>
+        <h3>Moderator <span class="hint">(korisničko ime: moderator)</span></h3>
+        <div class="field"><label for="s-mod">Lozinka</label><input type="password" id="s-mod" autocomplete="new-password"></div>
+        <div class="field"><label for="s-mod2">Ponovite lozinku</label><input type="password" id="s-mod2" autocomplete="new-password"></div>
+        <p class="hint">Najmanje 6 znakova. Zapišite lozinke – bez lozinke za admina izvoz i postavke nisu dostupni.</p>
+        <button type="submit" class="btn btn-gold btn-block btn-lg">Spremi i nastavi</button>
+      </form>
+
+      <form id="login-form" class="rsvp" novalidate hidden>
+        <h2 class="gold-text">Prijava</h2>
+        <p class="lead">Administrator ili moderator</p>
+        <div id="login-error" class="alert alert-err" role="alert" hidden></div>
+        <div class="field"><label for="l-user">Korisničko ime</label><input type="text" id="l-user" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="admin ili moderator"></div>
+        <div class="field"><label for="l-pass">Lozinka</label><input type="password" id="l-pass" autocomplete="current-password"></div>
+        <button type="submit" class="btn btn-gold btn-block btn-lg">Prijava</button>
+      </form>
+    </main>
+  </div>
+
+  <!-- APLIKACIJA -->
+  <div id="app" hidden>
+    <header class="topbar">
+      <div class="zk-logo small" aria-label="31. Zlatna kuna"><span class="num">31.</span><span class="word">ZLATNA KUNA</span></div>
+      <div class="who">
+        <span class="badge badge-role" id="role-badge"></span>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-logout">Odjava</button>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="scan" aria-selected="true">Skeniranje</button>
+      <button role="tab" data-tab="list" aria-selected="false">Popis</button>
+      <button role="tab" data-tab="admin" aria-selected="false" id="tab-admin" hidden>Admin</button>
+    </nav>
+
+    <main>
+      <!-- SKENIRANJE -->
+      <section data-panel="scan">
+        <div class="panel">
+          <div class="scanner-wrap">
+            <div id="reader"></div>
+            <div class="scanner-placeholder" id="scanner-placeholder">Kamera je isključena.</div>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-gold btn-lg btn-block" id="btn-camera">Pokreni kameru</button>
+            <label class="btn btn-outline btn-block" for="scan-file">Skeniraj sliku QR koda</label>
+            <input type="file" id="scan-file" accept="image/*" hidden>
+          </div>
+          <div id="camera-error" class="alert alert-warn" hidden></div>
+        </div>
+        <div class="panel">
+          <h2>Zadnji dolasci</h2>
+          <p class="count-line" id="log-count"></p>
+          <ul class="log" id="log"></ul>
+        </div>
+      </section>
+
+      <!-- POPIS -->
+      <section data-panel="list" hidden>
+        <div class="stats" id="stats"></div>
+        <div class="panel">
+          <div class="toolbar">
+            <input type="search" id="search" placeholder="Pretraži ime ili prezime…" aria-label="Pretraži" autocomplete="off">
+            <select id="filter" aria-label="Prikaz">
+              <option value="all">Svi</option>
+              <option value="arrived">Došli</option>
+              <option value="missing">Pozvani, nisu došli</option>
+            </select>
+          </div>
+          <button type="button" class="btn btn-outline btn-block" id="btn-manual">+ Ručni unos dolaska (QR ne radi)</button>
+          <p class="count-line" id="list-count" style="margin-top:12px"></p>
+          <ul class="results" id="list"></ul>
+        </div>
+      </section>
+
+      <!-- ADMIN -->
+      <section data-panel="admin" hidden>
+        <div class="panel">
+          <h2>Link pozivnice</h2>
+          <p class="hint mt0">Pošaljite ovaj link uzvanicima. Na njemu upisuju ime i pratnju i dobivaju QR kod.</p>
+          <div class="link-box"><span id="invite-link"></span></div>
+          <div class="actions"><button type="button" class="btn btn-gold" id="btn-share-link">Podijeli link</button></div>
+        </div>
+
+        <div class="panel">
+          <h2>Izvoz</h2>
+          <p class="hint mt0">Excel ima listove Došli, Pozvani – nisu došli i Svi. Pratnja je ispisana kao „Ime Prezime – pratnja”.</p>
+          <div class="actions">
+            <button type="button" class="btn btn-gold" id="btn-xlsx">Excel</button>
+            <button type="button" class="btn btn-gold" id="btn-pdf">PDF</button>
+          </div>
+        </div>
+
+        <form class="panel" id="invited-form" novalidate>
+          <h2>Popis pozvanih (neobavezno)</h2>
+          <p class="hint mt0">Upišite pozvane, jedno ime po retku (može se zalijepiti iz Excela). Pri skeniranju aplikacija javlja je li osoba na popisu, a u izvozu se vidi tko nije došao.</p>
+          <div class="field"><textarea id="invited-text" placeholder="Ivan Horvat&#10;Ana Kovačić"></textarea></div>
+          <button class="btn btn-outline" type="submit">Dodaj na popis</button>
+          <div id="invited-result"></div>
+        </form>
+
+        <form class="panel" id="password-form" novalidate>
+          <h2>Lozinke</h2>
+          <div id="pw-error" class="alert alert-err" hidden></div>
+          <div class="field"><label for="pw-role">Korisnik</label>
+            <select id="pw-role"><option value="moderator">moderator</option><option value="admin">admin</option></select></div>
+          <div class="field"><label for="pw-new">Nova lozinka</label><input type="password" id="pw-new" autocomplete="new-password"></div>
+          <div class="field"><label for="pw-new2">Ponovite lozinku</label><input type="password" id="pw-new2" autocomplete="new-password"></div>
+          <button class="btn btn-outline" type="submit">Promijeni lozinku</button>
+        </form>
+
+        <div class="panel">
+          <h2>Podaci</h2>
+          <div class="actions">
+            <button type="button" class="btn btn-danger" id="btn-wipe">Obriši sve dolaske i popis</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+</body>
+</html>
