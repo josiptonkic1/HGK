@@ -28,8 +28,8 @@ function renderStatic() {
   $('#logo').innerHTML = logoHtml({ edition: event.edition, dust: false });
   // Zlatna kuna od čestica (kuna.js) - pričeka fontove da logo ima konačnu veličinu
   const marten = () => window.startGoldenMarten?.($('.zk-logo'));
-  if (document.fonts?.ready) document.fonts.ready.then(marten);
-  else marten();
+  // animacija kune kreće tek nakon uvodnog videa (intro.js), kad su fontovi učitani
+  Promise.all([document.fonts?.ready, window.zkIntroDone]).then(marten);
   $('#letter').innerHTML = `
     <p>${esc(event.greeting)}<br>${richText(event.intro)}</p>
     <p>${esc(event.closing)}</p>

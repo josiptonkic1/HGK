@@ -14,6 +14,12 @@ describe('pozivnica (gost)', () => {
     assert.equal((await anon().get('/vendor/html5-qrcode.min.js')).status, 200);
     assert.equal((await anon().get('/vendor/fontsource/montserrat/700.css')).status, 200);
     assert.equal((await anon().get('/css/style.css')).status, 200);
+    // uvodni video prije pozivnice i prijave
+    assert.equal((await anon().get('/js/intro.js')).status, 200);
+    const video = await anon().head('/media/intro.mp4');
+    assert.equal(video.status, 200);
+    assert.equal(video.headers['content-type'], 'video/mp4');
+    for (const path of ['/pozivnica', '/prijava']) assert.match((await anon().get(path)).text, /\/js\/intro\.js/, path);
   });
 
   test('web aplikacija (PWA): manifest, service worker i ikone', async () => {
