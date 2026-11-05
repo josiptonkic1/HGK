@@ -79,7 +79,11 @@ export function createMailer(env = process.env, { fetchImpl } = {}) {
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const rich = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f2d892">$1</strong>');
 
-function layout(title, body) {
+// Slike u e-mailu idu s poveznice (Brevo ne podržava ugrađene slike) - adresa aplikacije iz linka pozivnice.
+const originOf = (link) => { try { return new URL(link).origin; } catch { return ''; } };
+
+function layout(title, body, link = '') {
+  const origin = originOf(link);
   return `<!doctype html><html lang="hr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>${esc(title)}</title></head>
 <body style="margin:0;padding:0;background:#0c0a07;">
@@ -93,7 +97,8 @@ function layout(title, body) {
 <tr><td style="padding:18px 22px 28px;font-family:Raleway,'Segoe UI',Arial,sans-serif;color:#ece4d4;font-size:16px;line-height:1.6;">
 ${body}
 </td></tr>
-<tr><td align="center" style="padding:0 30px 26px;font-family:Arial,sans-serif;color:#a99d88;font-size:12px;line-height:1.5;">
+<tr><td align="center" style="padding:6px 30px 26px;font-family:Arial,sans-serif;color:#a99d88;font-size:12px;line-height:1.5;border-top:1px solid #2a241b;">
+  ${origin ? `<img src="${esc(origin)}/img/hgk-logo.png" width="120" alt="HGK – ${esc(EVENT.organizer)}" style="display:block;width:120px;max-width:40%;height:auto;margin:18px auto 12px;border:0;">` : ''}
   ${esc(EVENT.organizer)} · <a href="mailto:${esc(EVENT.contactEmail)}" style="color:#d8b25e;">${esc(EVENT.contactEmail)}</a>
 </td></tr>
 </table></td></tr></table></body></html>`;
@@ -138,7 +143,7 @@ ${people(inv)}
   <strong style="color:#f2d892;">Važno:</strong> QR kod pokažite <strong>pri preuzimanju ulaznica</strong> na blagajni Hrvatskog narodnog kazališta i <strong>pri ulasku u dvoranu</strong>.
 </p>
 <p style="font-size:14px;color:#a99d88;">${EVENT.notes.map(esc).join('<br>')}</p>
-${button(link, 'Otvori e-kartu')}`);
+${button(link, 'Otvori e-kartu')}`, link);
   const lines = inv.guests.map((g, i) => `${g.fullName}${g.isCompanion ? ' (pratnja)' : ''}: ${inv.seatLabels[i] || '-'}`).join('\n');
   const text = `E-karta – ${EVENT.title}\n${lines}\n\nQR kod je u privitku. Pokažite ga pri preuzimanju ulaznica i ulasku u dvoranu.\nVaša e-karta: ${link}`;
   return {
@@ -160,7 +165,7 @@ ${people(inv, { seats: false })}
 </p>
 <p style="font-size:14px;color:#a99d88;">Ako se nešto promijeni, podatke možete izmijeniti putem svoje pozivnice.</p>
 ${button(link, 'Otvori svoju pozivnicu')}
-<p>${esc(EVENT.regards)}<br>${esc(EVENT.organizer)}</p>`);
+<p>${esc(EVENT.regards)}<br>${esc(EVENT.organizer)}</p>`, link);
   const text = `Hvala na potvrdi dolaska na ${EVENT.title}.\nOnline e-kartu s QR kodom i brojem sjedala dobit ćete ${EVENT.ticketWhen}\nVaša pozivnica: ${link}`;
   return { subject, html, text };
 }
@@ -173,7 +178,7 @@ ${recipient(inv)}
 <p>Molimo potvrdite dolazak putem osobne pozivnice. Nakon potvrde ćete ${esc(EVENT.ticketWhen)} dobiti online e-kartu s QR kodom i brojem sjedala.</p>
 ${button(link, 'Otvori pozivnicu i potvrdi dolazak')}
 <p style="font-size:13px;color:#a99d88;">Ako gumb ne radi, kopirajte ovaj link u preglednik:<br><a href="${esc(link)}" style="color:#d8b25e;word-break:break-all;">${esc(link)}</a></p>
-<p>${esc(EVENT.closing)}<br><br>${esc(EVENT.signatureName)}<br>${esc(EVENT.signatureTitle)}</p>`);
+<p>${esc(EVENT.closing)}<br><br>${esc(EVENT.signatureName)}<br>${esc(EVENT.signatureTitle)}</p>`, link);
   const text = `${EVENT.greeting}\n${EVENT.intro.replace(/\*\*/g, '')}\n\nPotvrdite dolazak: ${link}\n\n${EVENT.signatureName}, ${EVENT.signatureTitle}`;
   return { subject, html, text };
 }
@@ -185,7 +190,7 @@ ${recipient(inv)}
 <p>Poštovani,</p>
 <p>ljubazno Vas podsjećamo da još nismo zaprimili potvrdu Vašeg dolaska na ${esc(EVENT.titleAccusative || EVENT.title)}.</p>
 ${button(link, 'Potvrdi dolazak')}
-<p style="font-size:13px;color:#a99d88;">Link: <a href="${esc(link)}" style="color:#d8b25e;word-break:break-all;">${esc(link)}</a></p>`);
+<p style="font-size:13px;color:#a99d88;">Link: <a href="${esc(link)}" style="color:#d8b25e;word-break:break-all;">${esc(link)}</a></p>`, link);
   const text = `Podsjetnik: molimo potvrdite dolazak na ${EVENT.title}: ${link}`;
   return { subject, html, text };
 }
@@ -204,7 +209,7 @@ ${people(inv)}
   <strong style="color:#f2d892;">Važno:</strong> QR kod pokažite <strong>pri preuzimanju ulaznica</strong> na blagajni Hrvatskog narodnog kazališta i <strong>pri ulasku u dvoranu</strong>.
 </p>
 <p style="font-size:14px;color:#a99d88;">${EVENT.notes.map(esc).join('<br>')}</p>
-${button(link, 'Otvori svoju pozivnicu')}`);
+${button(link, 'Otvori svoju pozivnicu')}`, link);
   const text = `Hvala na potvrdi dolaska na ${EVENT.title}.\nQR kod je u privitku. Pokažite ga pri preuzimanju ulaznica i ulasku u dvoranu.\nVaša pozivnica: ${link}`;
   return {
     subject, html, text,

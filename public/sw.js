@@ -1,13 +1,13 @@
 ﻿// Service worker web aplikacije: omoguÄ‡uje instalaciju i otvaranje suÄelja bez mreÅ¾e.
 // Podaci (/api) se NIKAD ne spremaju u predmemoriju - uvijek idu na posluÅ¾itelj.
-const CACHE = 'zk31-v17';
+const CACHE = 'zk31-v18';
 const SHELL = [
   '/staff', '/prijava', '/pozivnica', '/raspored',
   '/css/style.css', '/js/common.js', '/js/staff.js', '/js/login.js', '/js/invite.js', '/js/seating.js', '/js/seatplan.js', '/js/raspored.js',
   '/vendor/html5-qrcode.min.js',
   '/vendor/fontsource/montserrat/600.css', '/vendor/fontsource/montserrat/700.css',
   '/vendor/fontsource/raleway/300.css', '/vendor/fontsource/raleway/400.css', '/vendor/fontsource/raleway/600.css',
-  '/img/hgk.svg', '/img/icon-192.png', '/img/icon-512.png', '/manifest.webmanifest',
+  '/img/hgk.svg', '/img/hgk-logo.png', '/img/icon-192.png', '/img/icon-512.png', '/manifest.webmanifest',
 ];
 
 self.addEventListener('install', (event) => {

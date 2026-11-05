@@ -94,7 +94,7 @@ body.invite {
 .notes { margin: 34px auto 0; max-width: 600px; font-size: 14px; font-weight: 300; color: var(--muted); }
 .notes p { margin: 0 0 .9em; }
 .regards { margin-top: 30px; font-size: 17px; font-weight: 300; }
-.hgk-logo { display: block; margin: 30px auto 0; width: 150px; height: auto; }
+.hgk-logo { display: block; margin: 36px auto 0; width: 160px; height: auto; }
 .divider {
   width: 120px; height: 1px; margin: 34px auto;
   background: linear-gradient(90deg, transparent, var(--gold), transparent);
