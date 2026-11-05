@@ -101,6 +101,10 @@ ${body}
 
 // Ime primatelja kao zaseban redak iznad "Poštovani," (bez pogađanja roda u obraćanju).
 // Ako ime još nije upisano (pozivnica na opću adresu), redak se izostavlja.
+const personName = (inv) => `${inv.firstName || ''} ${inv.lastName || ''}`.trim();
+// Ime u naslovu: Gmail inače spaja pozivnice za istu adresu (npr. tajništvo) u jednu nit.
+const named = (subject, inv) => (personName(inv) ? `${subject} – ${personName(inv)}` : subject);
+
 const recipient = (inv) => {
   const name = `${inv.firstName || ''} ${inv.lastName || ''}`.trim();
   return name ? `<p style="margin:0 0 6px;font-size:17px;color:#f2d892;"><strong>${esc(name)}</strong></p>` : '';
@@ -115,7 +119,7 @@ const people = (inv) =>
     .join('')}</ul>`;
 
 export function invitationEmail(inv, link) {
-  const subject = `Pozivnica – ${EVENT.title}`;
+  const subject = named(`Pozivnica – ${EVENT.title}`, inv);
   const html = layout(subject, `
 ${recipient(inv)}
 <p>${esc(EVENT.greeting)}<br>${rich(EVENT.intro)}</p>
@@ -128,7 +132,7 @@ ${button(link, 'Otvori pozivnicu i potvrdi dolazak')}
 }
 
 export function reminderEmail(inv, link) {
-  const subject = `Podsjetnik: potvrda dolaska – ${EVENT.title}`;
+  const subject = named(`Podsjetnik: potvrda dolaska – ${EVENT.title}`, inv);
   const html = layout(subject, `
 ${recipient(inv)}
 <p>Poštovani,</p>
@@ -141,7 +145,7 @@ ${button(link, 'Potvrdi dolazak')}
 
 // imageUrl: kad pružatelj ne podržava ugrađene slike (Brevo API), slika se učitava s poveznice
 export function qrEmail(inv, link, qrPng, { imageUrl } = {}) {
-  const subject = `Vaš QR kod – ${EVENT.title}`;
+  const subject = named(`Vaš QR kod – ${EVENT.title}`, inv);
   const n = inv.guests.length;
   const html = layout(subject, `
 ${recipient(inv)}

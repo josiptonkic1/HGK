@@ -120,11 +120,13 @@ describe('pozivnica na opću adresu (samo e-mail, bez imena)', () => {
     assert.equal(p1.to, 'gospodarstvo@tvrtka.hr');
     assert.equal(p1.hasName, false);
     assert.match(p1.subject, /Pozivnica/);
+    assert.equal(p1.subject.includes('–  '), false);
     assert.match(p1.html, new RegExp(`/p/${inv.token}`));
     // upiše se osoba -> pregled je personaliziran
     await a.put(`/api/admin/invitations/${inv.id}`).send({ firstName: 'Marija', lastName: 'Marić' });
     const p2 = (await a.get(`/api/admin/invitations/${inv.id}/preview?kind=invite`)).body;
     assert.equal(p2.hasName, true);
+    assert.match(p2.subject, /Pozivnica – .* – Marija Marić$/, 'ime je u naslovu pa Gmail ne spaja pozivnice za istu adresu');
     assert.match(p2.html, /<strong>Marija Marić<\/strong>/);
     assert.match((await a.get(`/api/admin/invitations/${inv.id}/preview?kind=reminder`)).body.subject, /Podsjetnik/);
     const m = await ctx.moderator();
