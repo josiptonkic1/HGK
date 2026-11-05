@@ -53,15 +53,22 @@ describe('Brevo HTTP API (radi i kad hosting blokira SMTP)', () => {
     await assert.rejects(m.send({ to: 'a@b.hr', subject: 's', html: 'h' }), /Brevo API \(401\): Key not found/);
   });
 
-  test('QR e-mail preko API-ja: slika s poveznice + privitak', async () => {
+  test('e-karta preko API-ja: QR slika s poveznice + privitak; potvrda bez privitka', async () => {
     const f = fakeFetch();
     const mailer = createMailer({ BREVO_API_KEY: 'k', MAIL_FROM: 'z@k.hr' }, { fetchImpl: f });
     const ctx = setup({ mailer });
     const res = await ctx.anon().post('/api/register').send({ firstName: 'Ana', lastName: 'Anić', email: 'ana@primjer.hr' });
     assert.equal(res.body.mail, 'sent');
-    const body = f.calls[0].body;
+    assert.equal(f.calls[0].body.attachment, undefined, 'potvrda dolaska nema privitak');
+
+    const a = await ctx.admin();
+    const inv = (await a.get('/api/staff/invitations')).body.invitations[0];
+    const r = await a.put(`/api/admin/invitations/${inv.id}/seats`).send({ seats: ['L-2-1'], notify: true });
+    assert.equal(r.body.mail, 'sent');
+    const body = f.calls.at(-1).body;
     assert.match(body.htmlContent, new RegExp(`/api/invite/${res.body.token}/qr\\.png`));
     assert.doesNotMatch(body.htmlContent, /cid:qr/);
-    assert.equal(body.attachment[0].name, 'zlatna-kuna-qr.png');
+    assert.match(body.htmlContent, /Loža 2, mjesto 1/);
+    assert.equal(body.attachment[0].name, 'zlatna-kuna-e-karta.png');
   });
 });

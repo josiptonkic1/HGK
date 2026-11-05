@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { setup } from './helpers.js';
+import { setup, ticketFor } from './helpers.js';
 
 describe('pozivnica (gost)', () => {
   test('stranice se poslužuju', async () => {
@@ -56,8 +56,9 @@ describe('pozivnica (gost)', () => {
     assert.equal(staff.headers['access-control-allow-origin'], undefined);
   });
 
-  test('osobni link: potvrda dolaska s pratnjom generira QR kod', async () => {
-    const { anon, admin } = setup();
+  test('osobni link: potvrda s pratnjom; QR kod dolazi tek s mjestom (e-kartom)', async () => {
+    const ctx = setup();
+    const { anon, admin } = ctx;
     const a = await admin();
     const created = await a.post('/api/admin/invitations').send({ firstName: 'Ivan', lastName: 'Horvat', maxCompanions: 2, organization: 'Končar' });
     assert.equal(created.status, 201);
@@ -80,13 +81,19 @@ describe('pozivnica (gost)', () => {
     });
     assert.equal(res.status, 200);
     assert.equal(res.body.status, 'confirmed');
-    assert.match(res.body.qrImage, /^data:image\/png;base64,/);
-    assert.match(res.body.qrCode, /^ZK31:[A-Za-z0-9_-]{16}$/);
+    assert.equal(res.body.qrImage, null, 'prije e-karte nema QR koda');
+    assert.equal((await anon().get(`/api/invite/${token}/qr.png`)).status, 404);
     assert.deepEqual(res.body.guests.map((g) => [g.fullName, g.isCompanion]), [['Ivan Horvat', false], ['Ana Horvat', true]]);
+
+    const ticket = await ticketFor(ctx, token);
+    assert.equal(ticket.ticket, true);
+    assert.match(ticket.qrImage, /^data:image\/png;base64,/);
+    assert.match(ticket.qrCode, /^ZK31:[A-Za-z0-9_-]{16}$/);
+    assert.equal(ticket.seatLabels.length, 2);
 
     // Ponovno otvaranje linka prikazuje isti QR
     const again = await anon().get(`/api/invite/${token}`);
-    assert.equal(again.body.qrCode, res.body.qrCode);
+    assert.equal(again.body.qrCode, ticket.qrCode);
 
     const png = await anon().get(`/api/invite/${token}/qr.png`);
     assert.equal(png.status, 200);
@@ -134,7 +141,7 @@ describe('pozivnica (gost)', () => {
     const res = await anon().post('/api/register').send({ firstName: 'Luka', lastName: 'Babić', companions: [{ firstName: 'Iva', lastName: 'Babić' }] });
     assert.equal(res.status, 201);
     assert.equal(res.body.status, 'confirmed');
-    assert.ok(res.body.qrImage);
+    assert.equal(res.body.qrImage, null, 'QR kod stiže s e-kartom');
     assert.equal(res.body.guests.length, 2);
 
     const tooMany = await anon().post('/api/register').send({
@@ -150,8 +157,9 @@ describe('pozivnica (gost)', () => {
   });
 
   test('nakon evidentiranog dolaska gost više ne može mijenjati podatke', async () => {
-    const { anon, moderator } = setup();
-    const reg = (await anon().post('/api/register').send({ firstName: 'Tea', lastName: 'Tomić' })).body;
+    const ctx = setup();
+    const { anon, moderator } = ctx;
+    const reg = await ticketFor(ctx, (await anon().post('/api/register').send({ firstName: 'Tea', lastName: 'Tomić' })).body.token);
     const m = await moderator();
     const scan = await m.post('/api/staff/scan').send({ code: reg.qrCode });
     await m.post('/api/staff/checkin').send({ invitationId: scan.body.invitation.id });

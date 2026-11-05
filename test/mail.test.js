@@ -2,8 +2,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { setup, fakeMailer } from './helpers.js';
 
-describe('e-mail: QR kod gostu', () => {
-  test('opći link: e-mail je obavezan i QR kod stiže na e-mail', async () => {
+describe('e-mail: potvrda dolaska i e-karta', () => {
+  test('opći link: e-mail je obavezan, stiže potvrda (bez QR koda)', async () => {
     const mailer = fakeMailer();
     const ctx = setup({ mailer });
     assert.equal((await ctx.anon().get('/api/event')).body.emailEnabled, true);
@@ -20,11 +20,43 @@ describe('e-mail: QR kod gostu', () => {
     assert.equal(mailer.sent.length, 1);
     const msg = mailer.sent[0];
     assert.equal(msg.to, 'ana@primjer.hr');
-    assert.match(msg.subject, /QR kod/);
+    assert.match(msg.subject, /Potvrda dolaska.*Ana Anić/);
     assert.match(msg.html, /Ivo Ivić – pratnja/);
+    assert.match(msg.html, /e-kartu.*brojem sjedala/s);
+    assert.match(msg.html, /dan prije Zlatne kune/);
     assert.match(msg.html, new RegExp(`/p/${res.body.token}`));
-    assert.equal(msg.attachments[0].cid, 'qr');
-    assert.equal(msg.attachments[0].content.subarray(1, 4).toString(), 'PNG');
+    assert.ok(!msg.attachments?.length, 'potvrda nema QR kod');
+    assert.equal(res.body.qrImage, null, 'QR kod se ne prikazuje prije e-karte');
+    assert.equal(res.body.ticket, false);
+  });
+
+  test('e-karta: tek kad su mjesta određena i poslana stižu QR kod i mjesto', async () => {
+    const mailer = fakeMailer();
+    const ctx = setup({ mailer });
+    const a = await ctx.admin();
+    const inv = (await a.post('/api/admin/invitations').send({ firstName: 'Marko', lastName: 'Marić', email: 'marko@primjer.hr' })).body.invitation;
+    await ctx.anon().post(`/api/invite/${inv.token}/respond`).send({ firstName: 'Marko', lastName: 'Marić', companions: [{ firstName: 'Ana', lastName: 'Marić' }] });
+    assert.equal((await ctx.anon().get(`/api/invite/${inv.token}/qr.png`)).status, 404, 'bez mjesta nema QR slike');
+
+    // mjesto spremljeno, e-karta još nije poslana -> gost još ne vidi QR
+    await a.put(`/api/admin/invitations/${inv.id}/seats`).send({ seats: ['P-3-5', 'P-3-6'] });
+    assert.equal((await ctx.anon().get(`/api/invite/${inv.token}`)).body.qrImage, null);
+
+    const before = mailer.sent.length;
+    const sent = await a.post('/api/admin/mail/bulk').send({ kind: 'seat', ids: [inv.id] });
+    assert.equal(sent.body.sent, 1);
+    const ticket = mailer.sent[before];
+    assert.match(ticket.subject, /e-karta.*Marko Marić/);
+    assert.match(ticket.html, /cid:qr/);
+    assert.match(ticket.html, /Parter, red 3, sjedalo 5/);
+    assert.match(ticket.html, /Ana Marić – pratnja<br><span[^>]*>Parter, red 3, sjedalo 6/);
+    assert.equal(ticket.attachments[0].content.subarray(1, 4).toString(), 'PNG');
+
+    const pub = (await ctx.anon().get(`/api/invite/${inv.token}`)).body;
+    assert.equal(pub.ticket, true);
+    assert.match(pub.qrImage, /^data:image\/png;base64,/);
+    assert.deepEqual(pub.seatLabels, ['Parter, red 3, sjedalo 5', 'Parter, red 3, sjedalo 6']);
+    assert.equal((await ctx.anon().get(`/api/invite/${inv.token}/qr.png`)).status, 200);
   });
 
   test('osobni link: e-mail je unaprijed upisan, gost ga može promijeniti', async () => {
@@ -38,7 +70,8 @@ describe('e-mail: QR kod gostu', () => {
     assert.equal(res.body.mail, 'sent');
     assert.equal(mailer.sent.at(-1).to, 'novi@primjer.hr');
     const list = (await a.get('/api/staff/invitations')).body.invitations;
-    assert.ok(list[0].qrSentAt, 'zabilježeno slanje QR koda');
+    assert.ok(list[0].confirmSentAt, 'zabilježeno slanje potvrde');
+    assert.equal(list[0].qrSentAt, null, 'QR kod se ne šalje kod potvrde');
   });
 
   test('greška u slanju ne kvari potvrdu dolaska', async () => {
@@ -47,7 +80,6 @@ describe('e-mail: QR kod gostu', () => {
     assert.equal(res.status, 201);
     assert.equal(res.body.status, 'confirmed');
     assert.equal(res.body.mail, 'failed');
-    assert.ok(res.body.qrImage);
   });
 
   test('bez podešenog e-maila: e-mail nije obavezan, slanje se ne nudi', async () => {
@@ -161,7 +193,7 @@ describe('e-mail: pozivnice i podsjetnici iz aplikacije', () => {
     const { mailer, ctx, a, ivan } = await seeded();
     const pre = (await a.get('/api/admin/mail/preview')).body;
     assert.deepEqual(pre.invite, { withEmail: 2, withoutEmail: 1 });
-    assert.deepEqual(pre.qr, { withEmail: 1, withoutEmail: 0 });
+    assert.deepEqual(pre.confirm, { withEmail: 1, withoutEmail: 0 }, 'auto-potvrđeni nisu dobili potvrdu');
 
     const r1 = (await a.post('/api/admin/mail/bulk').send({ kind: 'invite' })).body;
     assert.equal(r1.sent, 2);

@@ -43,3 +43,13 @@ export const binary = (res, cb) => {
   res.on('data', (c) => chunks.push(c));
   res.on('end', () => cb(null, Buffer.concat(chunks)));
 };
+
+// Dodijeli mjesta (e-karta) pozivnici po tokenu i vrati javni prikaz - tek tada gost ima QR kod.
+export async function ticketFor(ctx, token) {
+  const a = await ctx.admin();
+  const inv = (await a.get('/api/staff/invitations')).body.invitations.find((i) => i.token === token);
+  const seats = [`G-3-${2 * inv.id - 1}`, `G-3-${2 * inv.id}`].slice(0, inv.personCount);
+  const r = await a.put(`/api/admin/invitations/${inv.id}/seats`).send({ seats });
+  if (r.status !== 200) throw new Error(`seats failed: ${r.status} ${r.body?.message}`);
+  return (await ctx.anon().get(`/api/invite/${token}`)).body;
+}

@@ -58,7 +58,7 @@ export function openDb(file) {
   db.exec(SCHEMA);
   // Nadogradnja postojeće baze: evidencija poslanih e-mailova
   const cols = db.prepare('PRAGMA table_info(invitations)').all().map((c) => c.name);
-  for (const col of ['invite_sent_at', 'reminder_sent_at', 'qr_sent_at', 'seat_sent_at']) {
+  for (const col of ['invite_sent_at', 'reminder_sent_at', 'qr_sent_at', 'seat_sent_at', 'confirm_sent_at']) {
     if (!cols.includes(col)) db.exec(`ALTER TABLE invitations ADD COLUMN ${col} TEXT`);
   }
   // Sjedeća mjesta (JSON popis oznaka iz public/js/seatplan.js, redom: nositelj, pratnja)

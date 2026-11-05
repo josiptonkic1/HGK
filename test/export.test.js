@@ -4,7 +4,7 @@ import ExcelJS from 'exceljs';
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { PNG } from 'pngjs';
-import { setup, binary } from './helpers.js';
+import { setup, binary, ticketFor } from './helpers.js';
 import { personRows } from '../src/export.js';
 import { listInvitations } from '../src/store.js';
 
@@ -96,7 +96,7 @@ describe('izvoz', () => {
 describe('QR kod', () => {
   test('generirani QR se može očitati i vodi do istog uzvanika', async () => {
     const ctx = setup();
-    const reg = (await ctx.anon().post('/api/register').send({ firstName: 'Dora', lastName: 'Đurić' })).body;
+    const reg = await ticketFor(ctx, (await ctx.anon().post('/api/register').send({ firstName: 'Dora', lastName: 'Đurić' })).body.token);
 
     // Slika koju gost dobije na zaslonu (data URL)
     const fromScreen = PNG.sync.read(Buffer.from(reg.qrImage.split(',')[1], 'base64'));
@@ -115,7 +115,7 @@ describe('QR kod', () => {
 
   test('QR sadrži samo nasumični kod, ne osobne podatke', async () => {
     const ctx = setup();
-    const reg = (await ctx.anon().post('/api/register').send({ firstName: 'Tajna', lastName: 'Osoba' })).body;
+    const reg = await ticketFor(ctx, (await ctx.anon().post('/api/register').send({ firstName: 'Tajna', lastName: 'Osoba' })).body.token);
     assert.doesNotMatch(reg.qrCode, /Tajna|Osoba/);
     const other = await QRCode.toString(reg.qrCode);
     assert.ok(other.length > 0);

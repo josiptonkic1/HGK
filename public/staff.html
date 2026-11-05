@@ -168,10 +168,10 @@
           <button type="button" class="btn btn-gold" data-bulk="reminder">Pošalji podsjetnik</button>
         </div>
         <div class="panel">
-          <h3>QR kodovi</h3>
-          <p class="hint mt0">QR kod se šalje automatski nakon potvrde. Ovdje ga možete poslati onima koji su potvrdili, a još ga nisu dobili e-mailom (npr. dodani s automatskom potvrdom).</p>
-          <p class="count-line" id="mail-count-qr"></p>
-          <button type="button" class="btn btn-gold" data-bulk="qr">Pošalji QR kodove</button>
+          <h3>Potvrda dolaska</h3>
+          <p class="hint mt0">Potvrda se šalje automatski kad gost prihvati pozivnicu. Ovdje je možete poslati potvrđenima koji je još nisu dobili (npr. dodani s automatskom potvrdom). <strong>E-karte s QR kodom i mjestom</strong> šaljete u kartici <strong>Tlocrt</strong>.</p>
+          <p class="count-line" id="mail-count-confirm"></p>
+          <button type="button" class="btn btn-gold" data-bulk="confirm">Pošalji potvrde</button>
         </div>
         <form class="panel" id="mail-test-form" novalidate>
           <h3>Probni e-mail</h3>
@@ -210,8 +210,8 @@
             <input type="search" id="seat-search" placeholder="Pretraži uzvanike…" aria-label="Pretraži uzvanike">
             <select id="seat-filter" aria-label="Prikaz">
               <option value="missing">1. Bez mjesta (za raspoređivanje)</option>
-              <option value="unsent">2. S mjestom – e-mail nije poslan</option>
-              <option value="sent">S mjestom – e-mail poslan</option>
+              <option value="unsent">2. S mjestom – e-karta nije poslana</option>
+              <option value="sent">S mjestom – e-karta poslana</option>
               <option value="done">Svi s mjestom</option>
               <option value="all">Svi koji dolaze</option>
             </select>
@@ -219,7 +219,7 @@
           <label class="check seat-check-all"><input type="checkbox" id="seat-check-all"> <span>Označi sve prikazane s mjestom</span></label>
           <ul class="seat-list" id="seat-list"></ul>
           <div class="seat-send">
-            <button type="button" class="btn btn-gold btn-block" id="seat-bulk" disabled>Pošalji e-mail odabranima</button>
+            <button type="button" class="btn btn-gold btn-block" id="seat-bulk" disabled>Pošalji e-kartu odabranima</button>
             <p class="hint mt0" id="seat-send-hint"></p>
           </div>
           <div class="share-box" id="share-box">

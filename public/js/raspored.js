@@ -69,8 +69,8 @@ function personBlock(hit, { brief = false } = {}) {
   const info = [
     inv.email ? ['E-mail', `<a href="mailto:${esc(inv.email)}">${esc(inv.email)}</a>`] : null,
     ['Dolazak potvrđen', esc(fmtDateTime(inv.respondedAt)) || '—'],
-    ['QR kod poslan', inv.qrSentAt ? esc(fmtDateTime(inv.qrSentAt)) : 'ne'],
-    ['Mjesto poslano e-mailom', inv.seatSentAt ? esc(fmtDateTime(inv.seatSentAt)) : 'ne'],
+    ['Potvrda poslana', inv.confirmSentAt ? esc(fmtDateTime(inv.confirmSentAt)) : 'ne'],
+    ['E-karta poslana', inv.seatSentAt ? esc(fmtDateTime(inv.seatSentAt)) : 'ne'],
     inv.note ? ['Napomena', esc(inv.note)] : null,
   ].filter(Boolean);
   return `${head}

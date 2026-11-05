@@ -74,16 +74,20 @@
     <section id="view-success" class="success" hidden>
       <div class="rsvp" style="text-align:center">
         <div class="tick" aria-hidden="true">✓</div>
-        <h2 class="gold-text">Prijava je uspješna</h2>
+        <h2 class="gold-text" id="success-title">Prijava je uspješna</h2>
         <p id="success-lead"></p>
-        <div class="qr-box"><img id="qr-img" alt="QR kod pozivnice"></div>
-        <div class="qr-code-text" id="qr-text"></div>
+        <!-- e-karta: QR kod i mjesta (tek kad organizator pošalje e-kartu) -->
+        <div id="ticket-box" hidden>
+          <div class="qr-box"><img id="qr-img" alt="QR kod e-karte"></div>
+          <div class="qr-code-text" id="qr-text"></div>
+        </div>
         <ul class="person-list" id="success-persons"></ul>
-        <div class="notice">
+        <div class="notice" id="ticket-notice" hidden>
           <strong>Važno:</strong> ovaj QR kod morate pokazati <strong>pri preuzimanju ulaznica</strong> na blagajni
           Hrvatskog narodnog kazališta i <strong>pri ulasku u dvoranu</strong>.
           <span id="notice-party"></span>
         </div>
+        <div class="notice ticket-wait" id="ticket-wait" hidden></div>
         <div class="actions center no-print">
           <a class="btn btn-gold" id="btn-download" download>Preuzmi QR kod</a>
           <button type="button" class="btn btn-outline" id="btn-edit">Izmijeni podatke</button>

@@ -153,6 +153,7 @@ function serialize(inv, guests) {
     reminderSentAt: inv.reminder_sent_at,
     qrSentAt: inv.qr_sent_at,
     seatSentAt: inv.seat_sent_at,
+    confirmSentAt: inv.confirm_sent_at,
     createdAt: inv.created_at,
     guests: g,
     personCount: g.length || 1,
@@ -349,7 +350,7 @@ export function setSeats(db, id, seats) {
   });
 }
 
-const SENT_COLUMN = { invite: 'invite_sent_at', reminder: 'reminder_sent_at', qr: 'qr_sent_at', seat: 'seat_sent_at' };
+const SENT_COLUMN = { invite: 'invite_sent_at', reminder: 'reminder_sent_at', qr: 'qr_sent_at', seat: 'seat_sent_at', confirm: 'confirm_sent_at' };
 export function markSent(db, id, kind) {
   const col = SENT_COLUMN[kind];
   if (!col) throw new Error('nepoznata vrsta e-maila');

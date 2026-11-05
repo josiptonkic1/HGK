@@ -9,7 +9,7 @@ import * as store from './store.js';
 import { AppError } from './store.js';
 import { buildPdf, buildXlsx, FILTERS } from './export.js';
 import { buildSeatingPdf } from './seating-pdf.js';
-import { invitationEmail, reminderEmail, qrEmail, seatEmail } from './mail.js';
+import { invitationEmail, reminderEmail, qrEmail, seatEmail, confirmationEmail } from './mail.js';
 
 const require = createRequire(import.meta.url);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -19,8 +19,12 @@ export async function qrDataUrl(code) {
   return QRCode.toDataURL(code, { errorCorrectionLevel: 'M', margin: 2, width: 560, color: { dark: '#000000', light: '#ffffff' } });
 }
 
+// E-karta je spremna kad su mjesta određena i poslana e-mailom (bez podešenog e-maila: čim su mjesta određena).
+const ticketReady = (inv, mailOn) => inv.status === 'confirmed' && inv.seats.length > 0 && (Boolean(inv.seatSentAt) || !mailOn);
+
 // Javni prikaz pozivnice (bez internih podataka).
-async function publicInvitation(inv) {
+async function publicInvitation(inv, { mailOn = false } = {}) {
+  const ready = ticketReady(inv, mailOn);
   return {
     token: inv.token,
     firstName: inv.firstName,
@@ -30,8 +34,12 @@ async function publicInvitation(inv) {
     status: inv.status,
     editable: inv.checkedInCount === 0,
     guests: inv.guests.map((g) => ({ firstName: g.firstName, lastName: g.lastName, fullName: g.fullName, isCompanion: g.isCompanion, checkedIn: Boolean(g.checkedInAt) })),
-    qrCode: inv.status === 'confirmed' ? inv.qrCode : null,
-    qrImage: inv.status === 'confirmed' ? await qrDataUrl(inv.qrCode) : null,
+    // QR kod gost vidi tek kad mu je poslana e-karta (s brojem sjedala)
+    ticket: ready,
+    seatLabels: ready ? inv.seatLabels : [],
+    ticketWhen: EVENT.ticketWhen,
+    qrCode: ready ? inv.qrCode : null,
+    qrImage: ready ? await qrDataUrl(inv.qrCode) : null,
   };
 }
 
@@ -105,22 +113,30 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
   // ---------- e-mail ----------
   const baseUrl = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
   const inviteLink = (req, inv) => `${baseUrl(req)}/p/${inv.token}`;
-  const MAIL_KINDS = ['invite', 'reminder', 'qr', 'seat'];
+  const MAIL_KINDS = ['invite', 'reminder', 'qr', 'seat', 'confirm'];
   const MAIL_OFF = 'Slanje e-maila nije podešeno (BREVO_API_KEY i MAIL_FROM na poslužitelju).';
 
   // Sastavi e-mail (isti za pregled i za slanje). forPreview: QR slika uvijek s poveznice.
   async function buildMail(kind, inv, req, { forPreview = false } = {}) {
     if (!inv.email) throw new AppError(400, 'no_email', `${inv.fullName} nema upisanu e-mail adresu.`);
     const link = inviteLink(req, inv);
+    const qrImage = async () => ({
+      png: await QRCode.toBuffer(inv.qrCode, { errorCorrectionLevel: 'M', margin: 3, width: 600 }),
+      imageUrl: forPreview || mailer?.inlineImages === false ? `${baseUrl(req)}/api/invite/${inv.token}/qr.png` : undefined,
+    });
     if (kind === 'qr') {
       if (inv.status !== 'confirmed') throw new AppError(400, 'validation', 'QR kod se šalje samo uzvanicima koji su potvrdili dolazak.');
-      const png = await QRCode.toBuffer(inv.qrCode, { errorCorrectionLevel: 'M', margin: 3, width: 600 });
-      const imageUrl = forPreview || mailer?.inlineImages === false ? `${baseUrl(req)}/api/invite/${inv.token}/qr.png` : undefined;
+      const { png, imageUrl } = await qrImage();
       return qrEmail(inv, link, png, { imageUrl });
     }
     if (kind === 'seat') {
       if (!inv.seats.length) throw new AppError(400, 'validation', `${inv.fullName} još nema dodijeljeno mjesto.`);
-      return seatEmail(inv, link);
+      const { png, imageUrl } = await qrImage();
+      return seatEmail(inv, link, png, { imageUrl });
+    }
+    if (kind === 'confirm') {
+      if (inv.status !== 'confirmed') throw new AppError(400, 'validation', 'Potvrda se šalje samo uzvanicima koji su potvrdili dolazak.');
+      return confirmationEmail(inv, link);
     }
     if (kind === 'reminder') return reminderEmail(inv, link);
     return invitationEmail(inv, link);
@@ -133,15 +149,16 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
     return store.markSent(db, inv.id, kind);
   }
 
-  // QR kod na e-mail odmah nakon potvrde dolaska; greška u slanju ne kvari potvrdu.
-  async function autoSendQr(inv, req) {
+  // Potvrda dolaska na e-mail odmah nakon prihvaćanja (QR kod stiže kasnije s e-kartom);
+  // greška u slanju ne kvari potvrdu.
+  async function autoSendConfirm(inv, req) {
     if (!mailer) return 'disabled';
     if (!inv.email || inv.status !== 'confirmed') return 'no_email';
     try {
-      await sendMail('qr', inv, req);
+      await sendMail('confirm', inv, req);
       return 'sent';
     } catch (err) {
-      console.error('Slanje QR e-maila nije uspjelo:', err.message);
+      console.error('Slanje potvrde dolaska nije uspjelo:', err.message);
       return 'failed';
     }
   }
@@ -174,13 +191,13 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
   app.get('/api/invite/:token', wrap(async (req, res) => {
     const inv = store.getInvitationByToken(db, req.params.token);
     if (!inv) throw new AppError(404, 'not_found', 'Pozivnica nije pronađena. Provjerite link koji ste dobili.');
-    res.json(await publicInvitation(inv));
+    res.json(await publicInvitation(inv, { mailOn: Boolean(mailer) }));
   }));
 
   app.post('/api/invite/:token/respond', wrap(async (req, res) => {
     const inv = store.respondToInvitation(db, req.params.token, req.body || {}, { requireEmail: Boolean(mailer) });
-    const mail = await autoSendQr(inv, req);
-    res.json({ ...(await publicInvitation(store.getInvitationById(db, inv.id))), mail });
+    const mail = await autoSendConfirm(inv, req);
+    res.json({ ...(await publicInvitation(store.getInvitationById(db, inv.id), { mailOn: Boolean(mailer) })), mail });
   }));
 
   // Opći link: gost sam upisuje podatke, pozivnica se odmah potvrđuje.
@@ -193,13 +210,14 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
       { firstName: body.firstName, lastName: body.lastName, email: body.email, companions: body.companions, maxCompanions: s.defaultMaxCompanions },
       { source: 'open', requireEmail: Boolean(mailer) },
     );
-    const mail = await autoSendQr(inv, req);
-    res.status(201).json({ ...(await publicInvitation(store.getInvitationById(db, inv.id))), mail });
+    const mail = await autoSendConfirm(inv, req);
+    res.status(201).json({ ...(await publicInvitation(store.getInvitationById(db, inv.id), { mailOn: Boolean(mailer) })), mail });
   }));
 
   app.get('/api/invite/:token/qr.png', wrap(async (req, res) => {
     const inv = store.getInvitationByToken(db, req.params.token);
-    if (!inv || inv.status !== 'confirmed') throw new AppError(404, 'not_found', 'QR kod nije dostupan.');
+    // slika QR koda: za e-kartu (i njezin pregled) - čim su mjesta određena
+    if (!inv || inv.status !== 'confirmed' || !inv.seats.length) throw new AppError(404, 'not_found', 'QR kod još nije dostupan – stiže s e-kartom.');
     const png = await QRCode.toBuffer(inv.qrCode, { errorCorrectionLevel: 'M', margin: 3, width: 800 });
     const name = `${EVENT.qrPrefix}-${inv.firstName}-${inv.lastName}`.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^A-Za-z0-9-]+/g, '_');
     res.set({ 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="${name}.png"` }).send(png);
@@ -413,6 +431,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
     if (kind === 'invite') return i.status === 'pending' && !i.inviteSentAt;
     if (kind === 'reminder') return i.status === 'pending' && Boolean(i.inviteSentAt);
     if (kind === 'seat') return i.status === 'confirmed' && i.seats.length > 0 && !i.seatSentAt;
+    if (kind === 'confirm') return i.status === 'confirmed' && !i.confirmSentAt;
     return i.status === 'confirmed' && !i.qrSentAt;
   });
 

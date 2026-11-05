@@ -22,6 +22,8 @@ export const EVENT = {
     'Pozivnica nije prenosiva.',
     'Stil odijevanja: tamno odijelo/koktel haljina.',
   ],
+  // Kada gosti dobivaju e-kartu (QR kod + sjedeće mjesto) - piše u e-mailu potvrde i na stranici pozivnice.
+  ticketWhen: 'dan prije Zlatne kune, u utorak, 6. listopada 2026.',
   contactEmail: 'zlatnakuna@hgk.hr',
   regards: 'S poštovanjem,',
   organizer: 'Hrvatska gospodarska komora',

@@ -69,11 +69,11 @@ function renderSendBar(rows) {
   const n = checked.size;
   const bulk = $('#seat-bulk');
   bulk.disabled = !n;
-  bulk.textContent = n ? `Pošalji e-mail odabranima (${n})` : 'Pošalji e-mail odabranima';
+  bulk.textContent = n ? `Pošalji e-kartu odabranima (${n})` : 'Pošalji e-kartu odabranima';
   const resend = confirmed().filter((i) => checked.has(i.id) && i.seatSentAt).length;
   $('#seat-send-hint').textContent = n
-    ? `${resend ? `${resend} od njih već je dobilo e-mail i dobit će ga ponovno. ` : ''}Dnevno se može poslati najviše 250.`
-    : 'Označite uzvanike kvačicom (ili „Označi sve prikazane”) pa pošaljite svima odjednom.';
+    ? `E-karta sadrži QR kod i mjesto. ${resend ? `${resend} od njih već je dobilo e-kartu i dobit će je ponovno. ` : ''}Dnevno se može poslati najviše 250.`
+    : 'Kad su mjesta određena (obično dan prije), označite uzvanike kvačicom ili „Označi sve prikazane” i pošaljite im e-kartu s QR kodom i mjestom.';
   const eligible = rows.filter(canSend);
   const all = $('#seat-check-all');
   all.disabled = !eligible.length;
@@ -92,8 +92,8 @@ function renderSide() {
     ? rows.map((inv) => {
         const n = inv.seats.length;
         const state = n >= inv.personCount ? 'ok' : n ? 'part' : 'none';
-        const mail = !n ? '' : inv.seatSentAt ? `<span class="sl-mail sent">✉ poslano ${fmtDateTime(inv.seatSentAt)}</span>`
-          : inv.email ? '<span class="sl-mail">e-mail nije poslan</span>' : '<span class="sl-mail none">nema e-mail adrese</span>';
+        const mail = !n ? '' : inv.seatSentAt ? `<span class="sl-mail sent">✉ e-karta poslana ${fmtDateTime(inv.seatSentAt)}</span>`
+          : inv.email ? '<span class="sl-mail">e-karta nije poslana</span>' : '<span class="sl-mail none">nema e-mail adrese</span>';
         return `<li class="sl-item">
           ${canSend(inv) ? `<input type="checkbox" class="sl-check" data-check="${inv.id}" aria-label="Označi ${esc(inv.fullName)}" ${checked.has(inv.id) ? 'checked' : ''}>` : '<span class="sl-check"></span>'}
           <button type="button" data-id="${inv.id}" aria-pressed="${inv.id === selectedId}">
@@ -117,7 +117,7 @@ function renderBar() {
   const ppl = people(inv);
   const rows = ppl.map((g, i) => `<li><span>${g.isCompanion ? esc(companionLabel(g.fullName)) : `<strong>${esc(g.fullName)}</strong>`}</span>
       <span class="${draft[i] ? 'sb-seat' : 'sb-none'}">${draft[i] ? esc(seatLabel(draft[i])) : 'kliknite mjesto'}</span></li>`).join('');
-  const sent = inv.seatSentAt ? `E-mail s mjestom poslan ${fmtDateTime(inv.seatSentAt)}.` : inv.seats.length ? 'E-mail s mjestom još nije poslan.' : '';
+  const sent = inv.seatSentAt ? `E-karta poslana ${fmtDateTime(inv.seatSentAt)}.` : inv.seats.length ? 'E-karta još nije poslana.' : '';
   bar.innerHTML = `
     <div class="sb-head"><div><div class="sb-name">${esc(inv.fullName)}</div>
       <div class="hint mt0">${inv.email ? esc(inv.email) : 'nema e-mail adrese'}${sent ? ` · ${sent}` : ''}</div></div>
@@ -125,7 +125,7 @@ function renderBar() {
     <ul class="sb-people">${rows}</ul>
     <div class="actions">
       <button type="button" class="btn btn-gold" id="sb-save" ${dirty ? '' : 'disabled'}>Spremi i dalje</button>
-      ${inv.email ? `<button type="button" class="btn btn-outline" id="sb-save-mail" ${draft.length ? '' : 'disabled'}>Spremi i odmah pošalji e-mail</button>` : ''}
+      ${inv.email ? `<button type="button" class="btn btn-outline" id="sb-save-mail" ${draft.length ? '' : 'disabled'}>Spremi i odmah pošalji e-kartu</button>` : ''}
       <button type="button" class="btn btn-ghost" id="sb-clear" ${draft.length ? '' : 'disabled'}>Ukloni mjesta</button>
     </div>`;
 }
@@ -196,7 +196,7 @@ async function save(notify) {
 
 async function sendBulk() {
   const ids = [...checked];
-  if (!ids.length || !confirm(`Poslati e-mail sa sjedećim mjestom odabranim uzvanicima (${ids.length})?`)) return;
+  if (!ids.length || !confirm(`Poslati e-kartu (QR kod i sjedeće mjesto) odabranim uzvanicima (${ids.length})?`)) return;
   const btn = $('#seat-bulk');
   btn.disabled = true;
   btn.textContent = `Šaljem ${ids.length}…`;

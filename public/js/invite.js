@@ -94,15 +94,29 @@ function showForm() {
 
 function showSuccess() {
   const inv = invitation;
+  const ticket = Boolean(inv.ticket && inv.qrImage);
+  $('#success-title').textContent = ticket ? 'Vaša e-karta' : 'Prijava je uspješna';
   $('#success-lead').innerHTML = `Hvala, ${esc(inv.firstName)}! Vaš dolazak na ${esc(event.titleAccusative)} je potvrđen.`;
-  $('#qr-img').src = inv.qrImage;
-  $('#qr-text').textContent = inv.qrCode;
+  // Prije e-karte nema QR koda - stiže zajedno s brojem sjedala
+  $('#ticket-box').hidden = !ticket;
+  $('#ticket-notice').hidden = !ticket;
+  $('#btn-download').hidden = !ticket;
+  $('#ticket-wait').hidden = ticket;
+  $('#ticket-wait').innerHTML = `<strong>Online e-kartu</strong> s QR kodom i <strong>brojem sjedala</strong> dobit ćete na e-mail ${esc(inv.ticketWhen || '')} Na ovoj stranici će se tada prikazati i Vaš QR kod.`;
+  if (ticket) {
+    $('#qr-img').src = inv.qrImage;
+    $('#qr-text').textContent = inv.qrCode;
+    $('#btn-download').href = `/api/invite/${encodeURIComponent(inv.token)}/qr.png`;
+  }
+  const seatOf = (i) => (ticket && inv.seatLabels?.[i] ? `<br><span class="seat-line">${esc(inv.seatLabels[i])}</span>` : '');
   $('#success-persons').innerHTML = inv.guests
-    .map((g) => (g.isCompanion ? `<li class="comp">${esc(companionLabel(g.fullName))}</li>` : `<li><strong>${esc(g.fullName)}</strong></li>`))
+    .map((g, i) => (g.isCompanion ? `<li class="comp">${esc(companionLabel(g.fullName))}${seatOf(i)}</li>` : `<li><strong>${esc(g.fullName)}</strong>${seatOf(i)}</li>`))
     .join('');
   const n = inv.guests.length;
   $('#notice-party').textContent = n > 1 ? ` QR kod vrijedi za sve navedene osobe (${n}).` : '';
-  $('#btn-download').href = `/api/invite/${encodeURIComponent(inv.token)}/qr.png`;
+  $('#save-hint').textContent = ticket
+    ? 'Spremite QR kod na mobitel ili napravite snimku zaslona. Ovu stranicu možete ponovno otvoriti putem istog linka.'
+    : 'Ovu stranicu možete ponovno otvoriti putem istog linka.';
   $('#btn-edit').hidden = !inv.editable;
   const link = `${location.origin}/p/${inv.token}`;
   // Gost s općeg linka nema osobni link u e-mailu pa mu ga prikazujemo.
@@ -114,13 +128,13 @@ function showSuccess() {
   ms.hidden = !mail || mail === 'disabled';
   if (mail === 'sent') {
     ms.className = 'alert alert-ok';
-    ms.textContent = `QR kod smo poslali i na e-mail ${inv.email}.`;
+    ms.textContent = `Potvrdu dolaska poslali smo na e-mail ${inv.email}.`;
   } else if (mail === 'failed') {
     ms.className = 'alert alert-warn';
-    ms.textContent = 'E-mail s QR kodom trenutno nije poslan. Preuzmite QR kod ili napravite snimku zaslona.';
+    ms.textContent = 'Vaš dolazak je zabilježen, ali e-mail s potvrdom trenutno nije poslan.';
   } else if (mail === 'no_email') {
     ms.className = 'alert alert-warn';
-    ms.textContent = 'Bez e-mail adrese QR kod ne možemo poslati – preuzmite ga ili napravite snimku zaslona.';
+    ms.textContent = 'Bez e-mail adrese ne možemo poslati e-kartu – upišite je preko „Izmijeni podatke”.';
   }
   show('view-success');
 }

@@ -114,29 +114,54 @@ const button = (href, label) =>
   `<p style="text-align:center;margin:26px 0;"><a href="${esc(href)}" style="display:inline-block;background:#d9b15c;color:#1b1408;text-decoration:none;font-weight:700;font-family:Arial,sans-serif;padding:14px 28px;border-radius:999px;">${esc(label)}</a></p>`;
 
 // Popis osoba; uz svaku osobu i njezino mjesto ako je dodijeljeno (redom: nositelj, pratnja).
-const people = (inv) =>
+const people = (inv, { seats = true } = {}) =>
   `<ul style="list-style:none;padding:0;margin:14px 0;">${inv.guests
     .map((g, i) => {
-      const seat = inv.seatLabels?.[i];
+      const seat = seats ? inv.seatLabels?.[i] : null;
       const who = g.isCompanion ? `${esc(g.fullName)} – pratnja` : `<strong>${esc(g.fullName)}</strong>`;
       return `<li style="padding:8px 0;border-bottom:1px solid #3a3124;">${who}${seat ? `<br><span style="color:#f2d892;">${esc(seat)}</span>` : ''}</li>`;
     })
     .join('')}</ul>`;
 
-export function seatEmail(inv, link) {
-  const subject = named(`Vaše sjedeće mjesto – ${EVENT.title}`, inv);
-  const n = inv.seatLabels.length;
+// E-karta: šalje se kad su mjesta određena (obično dan prije). QR kod + sjedeće mjesto za svaku osobu.
+export function seatEmail(inv, link, qrPng, { imageUrl } = {}) {
+  const subject = named(`Vaša e-karta – ${EVENT.title}`, inv);
+  const n = inv.guests.length || 1;
   const html = layout(subject, `
 ${recipient(inv)}
 <p>Poštovani,</p>
-<p>${n > 1 ? 'dodijeljena su Vam sjedeća mjesta' : 'dodijeljeno Vam je sjedeće mjesto'} na ${esc(EVENT.titleAccusative || EVENT.title)} u Hrvatskom narodnom kazalištu u Zagrebu:</p>
+<p>u nastavku je Vaša e-karta za ${esc(EVENT.titleAccusative || EVENT.title)} u Hrvatskom narodnom kazalištu u Zagrebu${n > 1 ? ` – QR kod vrijedi za sve navedene osobe (${n})` : ''}.</p>
+<p style="text-align:center;margin:20px 0;"><img src="${imageUrl ? esc(imageUrl) : 'cid:qr'}" width="240" alt="QR kod e-karte" style="width:240px;max-width:100%;height:auto;background:#fff;padding:10px;border-radius:12px;box-sizing:border-box;"></p>
+<p style="margin:0 0 4px;font-size:13px;color:#a99d88;text-transform:uppercase;letter-spacing:1px;">Sjedeća mjesta</p>
 ${people(inv)}
 <p style="border:1px solid #d8b25e;border-radius:10px;padding:14px;background:#1f1a12;">
-  Ulaznice s ovim mjestima preuzimate na blagajni HNK uz <strong>QR kod</strong> koji ste dobili nakon potvrde dolaska.
+  <strong style="color:#f2d892;">Važno:</strong> QR kod pokažite <strong>pri preuzimanju ulaznica</strong> na blagajni Hrvatskog narodnog kazališta i <strong>pri ulasku u dvoranu</strong>.
 </p>
-${button(link, 'Otvori svoju pozivnicu')}`);
+<p style="font-size:14px;color:#a99d88;">${EVENT.notes.map(esc).join('<br>')}</p>
+${button(link, 'Otvori e-kartu')}`);
   const lines = inv.guests.map((g, i) => `${g.fullName}${g.isCompanion ? ' (pratnja)' : ''}: ${inv.seatLabels[i] || '-'}`).join('\n');
-  const text = `Sjedeća mjesta – ${EVENT.title}\n${lines}\n\nVaša pozivnica: ${link}`;
+  const text = `E-karta – ${EVENT.title}\n${lines}\n\nQR kod je u privitku. Pokažite ga pri preuzimanju ulaznica i ulasku u dvoranu.\nVaša e-karta: ${link}`;
+  return {
+    subject, html, text,
+    attachments: [{ filename: 'zlatna-kuna-e-karta.png', content: qrPng, contentType: 'image/png', ...(imageUrl ? {} : { cid: 'qr' }) }],
+  };
+}
+
+// Potvrda dolaska: odmah nakon prihvaćanja, bez QR koda (on stiže s e-kartom).
+export function confirmationEmail(inv, link) {
+  const subject = named(`Potvrda dolaska – ${EVENT.title}`, inv);
+  const html = layout(subject, `
+${recipient(inv)}
+<p>Poštovani,</p>
+<p>hvala Vam što ste potvrdili dolazak na ${esc(EVENT.titleAccusative || EVENT.title)}. Vaša prijava je zaprimljena:</p>
+${people(inv, { seats: false })}
+<p style="border:1px solid #d8b25e;border-radius:10px;padding:14px;background:#1f1a12;">
+  <strong style="color:#f2d892;">Online e-kartu</strong> s QR kodom i <strong>brojem sjedala</strong> dobit ćete na ovu e-mail adresu <strong>${esc(EVENT.ticketWhen)}</strong>
+</p>
+<p style="font-size:14px;color:#a99d88;">Ako se nešto promijeni, podatke možete izmijeniti putem svoje pozivnice.</p>
+${button(link, 'Otvori svoju pozivnicu')}
+<p>${esc(EVENT.regards)}<br>${esc(EVENT.organizer)}</p>`);
+  const text = `Hvala na potvrdi dolaska na ${EVENT.title}.\nOnline e-kartu s QR kodom i brojem sjedala dobit ćete ${EVENT.ticketWhen}\nVaša pozivnica: ${link}`;
   return { subject, html, text };
 }
 
@@ -145,7 +170,7 @@ export function invitationEmail(inv, link) {
   const html = layout(subject, `
 ${recipient(inv)}
 <p>${esc(EVENT.greeting)}<br>${rich(EVENT.intro)}</p>
-<p>Molimo potvrdite dolazak putem osobne pozivnice. Nakon potvrde dobit ćete QR kod za preuzimanje ulaznica i ulazak u dvoranu.</p>
+<p>Molimo potvrdite dolazak putem osobne pozivnice. Nakon potvrde ćete ${esc(EVENT.ticketWhen)} dobiti online e-kartu s QR kodom i brojem sjedala.</p>
 ${button(link, 'Otvori pozivnicu i potvrdi dolazak')}
 <p style="font-size:13px;color:#a99d88;">Ako gumb ne radi, kopirajte ovaj link u preglednik:<br><a href="${esc(link)}" style="color:#d8b25e;word-break:break-all;">${esc(link)}</a></p>
 <p>${esc(EVENT.closing)}<br><br>${esc(EVENT.signatureName)}<br>${esc(EVENT.signatureTitle)}</p>`);

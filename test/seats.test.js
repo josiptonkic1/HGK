@@ -39,7 +39,8 @@ describe('tlocrt: dodjela sjedećih mjesta', () => {
     assert.ok(r.body.invitation.seatSentAt);
     const msg = mailer.sent.at(-1);
     assert.equal(msg.to, 'ivan@primjer.hr');
-    assert.match(msg.subject, /sjedeće mjesto.*Ivan Horvat/);
+    assert.match(msg.subject, /e-karta.*Ivan Horvat/);
+    assert.equal(msg.attachments[0].content.subarray(1, 4).toString(), 'PNG', 'e-karta nosi QR kod');
     assert.match(msg.html, /Parter, red 5, sjedalo 12/);
     assert.match(msg.html, /Maja Horvat – pratnja<br><span[^>]*>Parter, red 5, sjedalo 13/);
 
@@ -86,7 +87,7 @@ describe('tlocrt: dodjela sjedećih mjesta', () => {
     const { mailer, a, ivan, ana, pending } = await seeded();
     await put(a, ivan, { seats: ['P-2-1', 'P-2-2'] });
     await put(a, ana, { seats: ['P-2-3'] });
-    assert.equal(mailer.sent.filter((m) => /sjedeće/.test(m.subject)).length, 0, 'spremanje ne šalje e-mail');
+    assert.equal(mailer.sent.filter((m) => /e-karta/.test(m.subject)).length, 0, 'spremanje ne šalje e-mail');
 
     const r1 = (await a.post('/api/admin/mail/bulk').send({ kind: 'seat', ids: [ana.id, pending.id] })).body;
     assert.equal(r1.sent, 1, 'samo odabrani i samo oni s mjestom');

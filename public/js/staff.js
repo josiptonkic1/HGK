@@ -127,7 +127,7 @@ function renderList() {
           <button class="btn btn-outline btn-sm" data-act="open">${inv.status === 'confirmed' && inv.checkedInCount < inv.personCount ? 'Preuzimanje' : 'Otvori'}</button>
           ${isAdmin() ? `<button class="btn btn-outline btn-sm" data-act="edit">Uredi</button>
             <button class="btn btn-ghost btn-sm" data-act="link" title="Kopiraj osobni link pozivnice">Link</button>
-            ${inv.email && inv.status !== 'declined' ? `<button class="btn btn-ghost btn-sm" data-act="mail" title="${inv.status === 'confirmed' ? 'Pošalji QR kod e-mailom' : 'Pošalji pozivnicu e-mailom'}">${inv.status === 'confirmed' ? 'Pošalji QR' : 'Pošalji'}</button>` : ''}
+            ${inv.email && inv.status !== 'declined' ? `<button class="btn btn-ghost btn-sm" data-act="mail" title="${inv.status !== 'confirmed' ? 'Pošalji pozivnicu e-mailom' : inv.seats.length ? 'Pošalji e-kartu (QR kod i mjesto)' : 'Pošalji potvrdu dolaska'}">${inv.status !== 'confirmed' ? 'Pošalji' : inv.seats.length ? 'Pošalji e-kartu' : 'Pošalji potvrdu'}</button>` : ''}
             <button class="btn btn-danger btn-sm" data-act="delete">Obriši</button>` : ''}
         </div></td>
       </tr>`;
@@ -534,19 +534,21 @@ const renderBulk = (res) =>
 
 // ---------- admin: e-mail ----------
 
-const MAIL_LABEL = { invite: 'Pozivnica', reminder: 'Podsjetnik', qr: 'QR kod' };
+const MAIL_LABEL = { invite: 'Pozivnica', reminder: 'Podsjetnik', qr: 'QR kod', confirm: 'Potvrda dolaska', seat: 'E-karta' };
 
 function mailHistory(inv) {
   const parts = [];
   if (inv.inviteSentAt) parts.push(`pozivnica ${fmtDateTime(inv.inviteSentAt)}`);
   if (inv.reminderSentAt) parts.push(`podsjetnik ${fmtDateTime(inv.reminderSentAt)}`);
+  if (inv.confirmSentAt) parts.push(`potvrda ${fmtDateTime(inv.confirmSentAt)}`);
   if (inv.qrSentAt) parts.push(`QR kod ${fmtDateTime(inv.qrSentAt)}`);
+  if (inv.seatSentAt) parts.push(`e-karta ${fmtDateTime(inv.seatSentAt)}`);
   return `${esc(inv.email)}${parts.length ? ` · poslano: ${parts.join(', ')}` : ' · ništa još nije poslano'}`;
 }
 
 function mailLine(inv) {
   if (!inv.email) return '<div class="hint">bez e-maila</div>';
-  const sent = inv.qrSentAt ? '✉ QR poslan' : inv.reminderSentAt ? '✉ podsjetnik poslan' : inv.inviteSentAt ? '✉ pozivnica poslana' : '';
+  const sent = inv.seatSentAt ? '✉ e-karta poslana' : inv.confirmSentAt ? '✉ potvrda poslana' : inv.qrSentAt ? '✉ QR poslan' : inv.reminderSentAt ? '✉ podsjetnik poslan' : inv.inviteSentAt ? '✉ pozivnica poslana' : '';
   // bez imena se e-mail već prikazuje kao naziv - ne ponavljaj ga
   const parts = [inv.hasName ? esc(inv.email) : '', sent].filter(Boolean);
   return parts.length ? `<div class="hint">${parts.join(' · ')}</div>` : '';
@@ -721,7 +723,7 @@ async function loadMail() {
       : `<div class="alert alert-warn"><strong>Slanje e-maila još nije podešeno.</strong> Na poslužitelju treba upisati
           <code>BREVO_API_KEY</code> i <code>MAIL_FROM</code> (besplatni Brevo). Dok to nije podešeno, pozivnice se šalju kopiranjem linka.</div>`;
     const line = (p) => `Za slanje: <strong>${p.withEmail}</strong>${p.withoutEmail ? ` · bez e-maila: ${p.withoutEmail}` : ''}`;
-    for (const kind of ['invite', 'reminder', 'qr']) {
+    for (const kind of ['invite', 'reminder', 'confirm']) {
       $(`#mail-count-${kind}`).innerHTML = line(preview[kind]);
       $(`[data-bulk="${kind}"]`).disabled = preview[kind].withEmail === 0;
     }
@@ -941,7 +943,7 @@ async function init() {
     if (!b) return;
     const inv = invitations.find((i) => i.id === Number(b.closest('tr').dataset.id));
     if (!inv) return;
-    ({ open: openParty, edit: openEdit, delete: deleteInv, link: (x) => copyText(inviteLink(x)), mail: (x) => sendOne(x, x.status === 'confirmed' ? 'qr' : x.inviteSentAt ? 'reminder' : 'invite') })[b.dataset.act](inv);
+    ({ open: openParty, edit: openEdit, delete: deleteInv, link: (x) => copyText(inviteLink(x)), mail: (x) => sendOne(x, x.status === 'confirmed' ? (x.seats.length ? 'seat' : 'confirm') : x.inviteSentAt ? 'reminder' : 'invite') })[b.dataset.act](inv);
   });
 
   if (isAdmin()) {
