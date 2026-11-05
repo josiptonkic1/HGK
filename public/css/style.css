@@ -384,3 +384,142 @@ body.staff { background: var(--bg-2); min-height: 100vh; }
 .name-edit input { flex: 1 1 110px; min-width: 0; padding: 7px 9px; font-size: 14px; }
 .modal.modal-wide { max-width: 760px; }
 .mail-preview { width: 100%; height: min(62vh, 640px); border: 1px solid var(--line); border-radius: 10px; background: #0c0a07; margin: 8px 0; }
+
+/* ======================================================================
+   Design refresh (v10): dublji slojevi, ikonice u karticama, jasniji fokus,
+   kartice statistike s bojom statusa, okvir skenera, animirani modal.
+   ====================================================================== */
+:root {
+  --panel-hi: rgba(242, 216, 146, .05);
+  --ring: 0 0 0 3px rgba(216, 178, 94, .35);
+  --shadow-1: 0 1px 0 rgba(255, 241, 193, .04) inset, 0 10px 30px rgba(0, 0, 0, .35);
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+body.staff {
+  background:
+    radial-gradient(1200px 500px at 50% -200px, rgba(216, 178, 94, .10), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+:focus-visible { outline: none; box-shadow: var(--ring); border-radius: 8px; }
+.btn { transition: filter .15s, border-color .15s, color .15s, background .15s, transform .1s; min-height: 40px; }
+.btn-sm { min-height: 34px; }
+.btn-icon { min-height: 0; }
+.btn:focus-visible { box-shadow: var(--ring); }
+
+/* Topbar: staklo + zlatna linija */
+.staff .topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(12, 10, 7, .78);
+  -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid rgba(216, 178, 94, .22);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .5);
+}
+
+/* Kartice (tabovi) kao segmentirana traka s ikonicama */
+.staff .tabs {
+  gap: 4px; padding: 6px; margin: 16px auto 18px; max-width: 1100px; width: calc(100% - 28px);
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px;
+}
+.staff .tabs::-webkit-scrollbar { display: none; }
+.staff .tabs button {
+  display: inline-flex; align-items: center; gap: 8px; flex: none;
+  border: 0; border-radius: 10px; padding: 9px 14px; min-height: 40px;
+  transition: background .2s var(--ease), color .2s;
+}
+.staff .tabs button:hover { color: var(--text); background: rgba(255, 255, 255, .04); }
+.staff .tabs button[aria-selected=true] {
+  color: #1b1408; background: linear-gradient(180deg, #f2d690, #c99a3d);
+  box-shadow: 0 4px 14px rgba(201, 154, 61, .28);
+}
+.tabs .ti { width: 18px; height: 18px; flex: none; }
+
+/* Paneli */
+.staff .panel {
+  background: linear-gradient(180deg, var(--panel-hi), transparent 120px), var(--panel);
+  box-shadow: var(--shadow-1); border-radius: 16px;
+  animation: zk-rise .35s var(--ease) both;
+}
+.staff .panel h2 { display: flex; align-items: center; gap: 10px; letter-spacing: .2px; }
+.staff .panel h2::before {
+  content: ''; width: 4px; height: 18px; border-radius: 2px; background: var(--gold-grad); flex: none;
+}
+@keyframes zk-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Statistika: obojeni akcent po statusu */
+.stat {
+  --accent: var(--gold);
+  position: relative; overflow: hidden; color: var(--text);
+  background: linear-gradient(160deg, rgba(255, 255, 255, .025), transparent 60%), var(--panel);
+  box-shadow: var(--shadow-1); border-radius: 14px;
+  transition: transform .18s var(--ease), border-color .18s, box-shadow .18s;
+}
+.stat::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--accent); opacity: .85; }
+.stat::after {
+  content: ''; position: absolute; right: -30px; top: -30px; width: 90px; height: 90px; border-radius: 50%;
+  background: radial-gradient(circle, var(--accent), transparent 70%); opacity: .14; pointer-events: none;
+}
+.stat:hover { transform: translateY(-2px); border-color: var(--gold-3); }
+.stat[aria-pressed=true] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), var(--shadow-1); }
+.stat .v { color: var(--accent); font-variant-numeric: tabular-nums; font-size: 30px; }
+.stat .l { color: var(--text); font-weight: 600; margin-top: 2px; }
+.stat[data-filter=confirmed] { --accent: var(--ok); }
+.stat[data-filter=declined] { --accent: var(--err); }
+.stat[data-filter=pending] { --accent: var(--warn); }
+.stat[data-filter=checked_in] { --accent: var(--info); }
+
+/* Tablice */
+.table tbody tr { transition: background .15s; }
+.table tr:hover td { background: rgba(216, 178, 94, .06); }
+.badge { font-weight: 600; letter-spacing: .2px; }
+
+/* Polja */
+input[type=text], input[type=email], input[type=password], input[type=number], input[type=search], select, textarea {
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) { border-color: #57492f; }
+
+/* Skener: zlatni kutovi + linija skeniranja */
+.scanner-wrap { min-height: 260px; box-shadow: inset 0 0 60px rgba(0, 0, 0, .8); }
+.scan-frame { position: absolute; inset: 14%; pointer-events: none; opacity: .35; transition: opacity .3s; z-index: 2; }
+.scanner-wrap.live .scan-frame { opacity: 1; }
+.scan-frame i { position: absolute; width: 34px; height: 34px; border: 3px solid var(--gold-2); filter: drop-shadow(0 0 6px rgba(242, 216, 146, .6)); }
+.scan-frame i:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 12px; }
+.scan-frame i:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 12px; }
+.scan-frame i:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 12px; }
+.scan-frame i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 12px; }
+.scanner-wrap.live .scan-frame::after {
+  content: ''; position: absolute; left: 6%; right: 6%; height: 2px; top: 0;
+  background: linear-gradient(90deg, transparent, var(--gold-2), transparent);
+  box-shadow: 0 0 12px var(--gold); animation: zk-sweep 2.4s ease-in-out infinite alternate;
+}
+@keyframes zk-sweep { from { top: 4%; } to { top: 96%; } }
+
+/* Modal: zamućena pozadina + ulazna animacija */
+.modal-backdrop {
+  background: rgba(5, 4, 2, .62);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  animation: zk-fade .2s ease both;
+}
+.modal {
+  background: linear-gradient(180deg, var(--panel-hi), transparent 140px), var(--panel);
+  border-color: rgba(216, 178, 94, .25);
+  animation: zk-pop .28s var(--ease) both;
+}
+@keyframes zk-fade { from { opacity: 0; } }
+@keyframes zk-pop { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+
+/* Mobitel */
+@media (max-width: 640px) {
+  .staff .tabs { margin: 10px auto 14px; width: calc(100% - 20px); }
+  .staff .tabs button { padding: 9px 12px; }
+  .stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat .v { font-size: 26px; }
+  .stat:first-child { grid-column: 1 / -1; }
+  .staff .panel { padding: 16px; border-radius: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

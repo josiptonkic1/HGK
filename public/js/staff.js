@@ -331,7 +331,7 @@ async function startCamera() {
       () => {},
     );
     scanning = true;
-    $('#scanner-placeholder').hidden = true;
+    $('#scanner-placeholder').hidden = true; $('.scanner-wrap').classList.add('live');
     $('#btn-camera').textContent = 'Zaustavi kameru';
   } catch (e) {
     err.innerHTML = `Kamera nije dostupna (${esc(e?.message || e)}). Dopustite pristup kameri u pregledniku – stranica mora biti otvorena preko HTTPS-a. U međuvremenu koristite pretragu po imenu.`;
@@ -344,7 +344,7 @@ async function stopCamera() {
     try { await scanner.stop(); } catch { /* */ }
   }
   scanning = false;
-  $('#scanner-placeholder').hidden = false;
+  $('#scanner-placeholder').hidden = false; $('.scanner-wrap').classList.remove('live');
   $('#btn-camera').textContent = 'Pokreni kameru';
 }
 
