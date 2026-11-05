@@ -8,6 +8,7 @@ import { EVENT } from './event.js';
 import * as store from './store.js';
 import { AppError } from './store.js';
 import { buildPdf, buildXlsx, FILTERS } from './export.js';
+import { invitationEmail, reminderEmail, qrEmail } from './mail.js';
 
 const require = createRequire(import.meta.url);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -23,6 +24,7 @@ async function publicInvitation(inv) {
     token: inv.token,
     firstName: inv.firstName,
     lastName: inv.lastName,
+    email: inv.email,
     maxCompanions: inv.maxCompanions,
     status: inv.status,
     editable: inv.checkedInCount === 0,
@@ -53,7 +55,7 @@ function loginLimiter() {
   };
 }
 
-export function createApp({ db, sessionSecret, secureCookies = false, trustProxy = false }) {
+export function createApp({ db, sessionSecret, secureCookies = false, trustProxy = false, mailer = null }) {
   if (!sessionSecret || sessionSecret.length < 16) throw new Error('SESSION_SECRET mora imati barem 16 znakova.');
   const app = express();
   const limiter = loginLimiter();
@@ -99,6 +101,42 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
   const staff = requireRole('admin', 'moderator');
   const admin = requireRole('admin');
 
+  // ---------- e-mail ----------
+  const baseUrl = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  const inviteLink = (req, inv) => `${baseUrl(req)}/p/${inv.token}`;
+  const MAIL_KINDS = ['invite', 'reminder', 'qr'];
+  const MAIL_OFF = 'Slanje e-maila nije podešeno (SMTP postavke na poslužitelju).';
+
+  async function sendMail(kind, inv, req) {
+    if (!mailer) throw new AppError(400, 'mail_disabled', MAIL_OFF);
+    if (!inv.email) throw new AppError(400, 'no_email', `${inv.fullName} nema upisanu e-mail adresu.`);
+    const link = inviteLink(req, inv);
+    let msg;
+    if (kind === 'qr') {
+      if (inv.status !== 'confirmed') throw new AppError(400, 'validation', 'QR kod se šalje samo uzvanicima koji su potvrdili dolazak.');
+      msg = qrEmail(inv, link, await QRCode.toBuffer(inv.qrCode, { errorCorrectionLevel: 'M', margin: 3, width: 600 }));
+    } else if (kind === 'reminder') {
+      msg = reminderEmail(inv, link);
+    } else {
+      msg = invitationEmail(inv, link);
+    }
+    await mailer.send({ to: inv.email, ...msg });
+    return store.markSent(db, inv.id, kind);
+  }
+
+  // QR kod na e-mail odmah nakon potvrde dolaska; greška u slanju ne kvari potvrdu.
+  async function autoSendQr(inv, req) {
+    if (!mailer) return 'disabled';
+    if (!inv.email || inv.status !== 'confirmed') return 'no_email';
+    try {
+      await sendMail('qr', inv, req);
+      return 'sent';
+    } catch (err) {
+      console.error('Slanje QR e-maila nije uspjelo:', err.message);
+      return 'failed';
+    }
+  }
+
   // ---------- stranice ----------
   const page = (file) => (req, res) => {
     res.set('X-Robots-Tag', 'noindex, nofollow');
@@ -119,7 +157,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
     // Javni podaci; Android aplikacija ovim provjerava upisanu adresu poslužitelja.
     res.set('Access-Control-Allow-Origin', '*');
     const s = store.getSettings(db);
-    res.json({ event: EVENT, openRegistration: s.openRegistration, defaultMaxCompanions: s.defaultMaxCompanions });
+    res.json({ event: EVENT, openRegistration: s.openRegistration, defaultMaxCompanions: s.defaultMaxCompanions, emailEnabled: Boolean(mailer) });
   });
 
   app.get('/api/invite/:token', wrap(async (req, res) => {
@@ -129,8 +167,9 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
   }));
 
   app.post('/api/invite/:token/respond', wrap(async (req, res) => {
-    const inv = store.respondToInvitation(db, req.params.token, req.body || {});
-    res.json(await publicInvitation(inv));
+    const inv = store.respondToInvitation(db, req.params.token, req.body || {}, { requireEmail: Boolean(mailer) });
+    const mail = await autoSendQr(inv, req);
+    res.json({ ...(await publicInvitation(store.getInvitationById(db, inv.id))), mail });
   }));
 
   // Opći link: gost sam upisuje podatke, pozivnica se odmah potvrđuje.
@@ -140,10 +179,11 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
     const body = req.body || {};
     const inv = store.createInvitation(
       db,
-      { firstName: body.firstName, lastName: body.lastName, companions: body.companions, maxCompanions: s.defaultMaxCompanions },
-      { source: 'open' },
+      { firstName: body.firstName, lastName: body.lastName, email: body.email, companions: body.companions, maxCompanions: s.defaultMaxCompanions },
+      { source: 'open', requireEmail: Boolean(mailer) },
     );
-    res.status(201).json(await publicInvitation(inv));
+    const mail = await autoSendQr(inv, req);
+    res.status(201).json({ ...(await publicInvitation(store.getInvitationById(db, inv.id))), mail });
   }));
 
   app.get('/api/invite/:token/qr.png', wrap(async (req, res) => {
@@ -270,6 +310,74 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
     } else {
       throw new AppError(400, 'validation', 'Podržani formati su pdf i xlsx.');
     }
+  }));
+
+  // ---------- admin: e-mail ----------
+  app.get('/api/admin/mail', admin, (req, res) => res.json({ enabled: Boolean(mailer), from: mailer?.from || null }));
+
+  app.post('/api/admin/mail/test', admin, wrap(async (req, res) => {
+    if (!mailer) throw new AppError(400, 'mail_disabled', MAIL_OFF);
+    const to = String(req.body?.to || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) throw new AppError(400, 'validation', 'Upišite ispravnu e-mail adresu.');
+    try {
+      await mailer.send({ to, subject: `Probni e-mail – ${EVENT.title}`, text: 'Slanje e-maila iz aplikacije radi.', html: '<p>Slanje e-maila iz aplikacije <strong>radi</strong>.</p>' });
+    } catch (err) {
+      throw new AppError(502, 'mail_failed', `E-mail nije poslan: ${err.message}`);
+    }
+    res.json({ ok: true });
+  }));
+
+  // Pojedinačno: kind = invite | reminder | qr
+  app.post('/api/admin/invitations/:id/send', admin, wrap(async (req, res) => {
+    const kind = String(req.body?.kind || 'invite');
+    if (!MAIL_KINDS.includes(kind)) throw new AppError(400, 'validation', 'Nepoznata vrsta e-maila.');
+    const inv = store.getInvitationById(db, req.params.id);
+    if (!inv) throw new AppError(404, 'not_found', 'Uzvanik nije pronađen.');
+    try {
+      res.json({ invitation: await sendMail(kind, inv, req) });
+    } catch (err) {
+      if (err instanceof AppError) throw err;
+      throw new AppError(502, 'mail_failed', `E-mail nije poslan: ${err.message}`);
+    }
+  }));
+
+  // Skupno: invite = pozivnice onima koji je još nisu dobili,
+  // reminder = podsjetnik onima koji nisu odgovorili, qr = QR onima koji su potvrdili a nisu ga dobili.
+  const bulkTargets = (kind, list) => list.filter((i) => {
+    if (kind === 'invite') return i.status === 'pending' && !i.inviteSentAt;
+    if (kind === 'reminder') return i.status === 'pending' && Boolean(i.inviteSentAt);
+    return i.status === 'confirmed' && !i.qrSentAt;
+  });
+
+  app.get('/api/admin/mail/preview', admin, (req, res) => {
+    const list = store.listInvitations(db);
+    const out = {};
+    for (const kind of MAIL_KINDS) {
+      const t = bulkTargets(kind, list);
+      out[kind] = { withEmail: t.filter((i) => i.email).length, withoutEmail: t.filter((i) => !i.email).length };
+    }
+    res.json(out);
+  });
+
+  app.post('/api/admin/mail/bulk', admin, wrap(async (req, res) => {
+    const kind = String(req.body?.kind || '');
+    if (!MAIL_KINDS.includes(kind)) throw new AppError(400, 'validation', 'Nepoznata vrsta e-maila.');
+    if (!mailer) throw new AppError(400, 'mail_disabled', MAIL_OFF);
+    const targets = bulkTargets(kind, store.listInvitations(db));
+    const LIMIT = 250; // besplatni paketi imaju dnevni limit (Brevo: 300/dan)
+    const all = targets.filter((i) => i.email);
+    const result = { sent: 0, failed: [], withoutEmail: targets.filter((i) => !i.email).map((i) => i.fullName), remaining: Math.max(0, all.length - LIMIT) };
+    for (const inv of all.slice(0, LIMIT)) {
+      try {
+        await sendMail(kind, inv, req);
+        result.sent++;
+      } catch (err) {
+        result.failed.push({ name: inv.fullName, email: inv.email, message: err.message });
+      }
+      const delay = mailer.delayMs ?? 300;
+      if (delay) await new Promise((r) => setTimeout(r, delay));
+    }
+    res.json(result);
   }));
 
   app.get('/api/admin/users', admin, (req, res) => res.json({ users: store.listUsers(db) }));

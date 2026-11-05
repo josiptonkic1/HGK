@@ -48,6 +48,10 @@ function showForm() {
   const max = invitation ? invitation.maxCompanions : settings.defaultMaxCompanions;
   $('#firstName').value = invitation?.firstName || '';
   $('#lastName').value = invitation?.lastName || '';
+  $('#email').value = invitation?.email || '';
+  // E-mail je obavezan kad aplikacija šalje QR kod e-mailom
+  $('#email').required = Boolean(settings.emailEnabled);
+  $('#email-hint').textContent = settings.emailEnabled ? '(na njega šaljemo QR kod)' : '(neobavezno)';
   const comps = (invitation?.guests || []).filter((g) => g.isCompanion).map((g) => ({ firstName: g.firstName, lastName: g.lastName }));
   editor.setMax(max);
   editor.reset(comps);
@@ -77,6 +81,20 @@ function showSuccess() {
   // Gost s općeg linka nema osobni link u e-mailu pa mu ga prikazujemo.
   $('#own-link').hidden = !cameFromOpen;
   $('#own-link-text').textContent = link;
+  // Poruka o e-mailu s QR kodom
+  const ms = $('#mail-status');
+  const mail = inv.mail;
+  ms.hidden = !mail || mail === 'disabled';
+  if (mail === 'sent') {
+    ms.className = 'alert alert-ok';
+    ms.textContent = `QR kod smo poslali i na e-mail ${inv.email}.`;
+  } else if (mail === 'failed') {
+    ms.className = 'alert alert-warn';
+    ms.textContent = 'E-mail s QR kodom trenutno nije poslan. Preuzmite QR kod ili napravite snimku zaslona.';
+  } else if (mail === 'no_email') {
+    ms.className = 'alert alert-warn';
+    ms.textContent = 'Bez e-mail adrese QR kod ne možemo poslati – preuzmite ga ili napravite snimku zaslona.';
+  }
   show('view-success');
 }
 
@@ -99,10 +117,20 @@ async function submit(attending) {
   if (attending) {
     body.firstName = $('#firstName').value.trim();
     body.lastName = $('#lastName').value.trim();
+    body.email = $('#email').value.trim();
     body.companions = editor.values();
     $('#firstName').setAttribute('aria-invalid', String(!body.firstName));
     $('#lastName').setAttribute('aria-invalid', String(!body.lastName));
     if (!body.firstName || !body.lastName) return setFormError('Molimo upišite ime i prezime.');
+    $('#email').setAttribute('aria-invalid', 'false');
+    if (settings.emailEnabled && !body.email) {
+      $('#email').setAttribute('aria-invalid', 'true');
+      return setFormError('Upišite e-mail adresu – na nju šaljemo QR kod.');
+    }
+    if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      $('#email').setAttribute('aria-invalid', 'true');
+      return setFormError('E-mail adresa nije ispravna.');
+    }
     const bad = body.companions.findIndex((c) => (c.firstName && !c.lastName) || (!c.firstName && c.lastName));
     if (bad >= 0) return setFormError(`Upišite ime i prezime za ${bad + 1}. osobu u pratnji.`);
     body.companions = body.companions.filter((c) => c.firstName || c.lastName);

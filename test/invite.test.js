@@ -63,7 +63,10 @@ describe('pozivnica (gost)', () => {
     assert.equal(before.body.firstName, 'Ivan');
     assert.equal(before.body.qrImage, null);
     assert.equal(before.body.maxCompanions, 2);
-    assert.equal(before.body.email, undefined, 'javni prikaz ne smije otkrivati e-mail');
+    // osobni link vidi samo svoj e-mail (da ga gost ne mora ponovno upisivati); interni podaci ostaju skriveni
+    assert.equal(before.body.email, '');
+    assert.equal(before.body.id, undefined);
+    assert.equal(before.body.source, undefined);
 
     const res = await anon().post(`/api/invite/${token}/respond`).send({
       attending: true, firstName: 'Ivan', lastName: 'Horvat',

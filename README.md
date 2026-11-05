@@ -43,6 +43,26 @@ Stranica i APK se automatski grade i objavljuju (`.github/workflows/release.yml`
 
 Ispod je opisana starija **web aplikacija s poslužiteljem** (mape `src/`, `public/`). Za Android aplikaciju nije potrebna.
 
+## E-mail: pozivnice, podsjetnici i QR kod gostu
+
+Kad je e-mail podešen:
+- gost na pozivnici upisuje **svoj e-mail** (obavezno), a pratnja samo ime i prezime;
+- nakon potvrde dolaska gost **automatski dobiva e-mail s QR kodom** i popisom osoba;
+- admin u kartici **E-mail** šalje **pozivnice** (osobni link) uzvanicima koje je dodao, **podsjetnike** onima koji nisu odgovorili i **QR kodove** potvrđenima koji ga još nisu dobili. Ista se slanja mogu napraviti i pojedinačno (Popis → Pošalji, ili Uredi);
+- aplikacija pamti što je kome poslano, pa se pozivnica ne šalje dvaput.
+
+Podešavanje (besplatno, npr. [Brevo](https://www.brevo.com): 300 e-mailova dnevno, ne treba vlastita domena) – na Renderu u **Environment**:
+
+| Varijabla | Vrijednost |
+|---|---|
+| `SMTP_HOST` | `smtp-relay.brevo.com` |
+| `SMTP_PORT` | `587` |
+| `SMTP_USER` | Brevo SMTP login (Brevo → SMTP & API → SMTP) |
+| `SMTP_PASS` | Brevo SMTP ključ |
+| `MAIL_FROM` | npr. `31. Zlatna kuna <vasa-adresa@primjer.hr>` (adresa potvrđena u Brevu kao pošiljatelj) |
+
+Bez tih varijabli aplikacija radi kao i prije (e-mail na pozivnici nije obavezan, ništa se ne šalje).
+
 ## Web aplikacija online (Render)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/josiptonkic1/HGK)

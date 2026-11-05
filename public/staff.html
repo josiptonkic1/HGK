@@ -35,6 +35,7 @@
     <button role="tab" data-tab="scan" aria-selected="true">Skeniranje</button>
     <button role="tab" data-tab="list" aria-selected="false">Popis uzvanika</button>
     <button role="tab" data-tab="add" aria-selected="false" data-admin hidden>Dodaj uzvanike</button>
+    <button role="tab" data-tab="mail" aria-selected="false" data-admin hidden>E-mail</button>
     <button role="tab" data-tab="export" aria-selected="false" data-admin hidden>Izvoz</button>
     <button role="tab" data-tab="settings" aria-selected="false" data-admin hidden>Postavke i korisnici</button>
   </nav>
@@ -137,6 +138,40 @@
           <div id="bulk-result"></div>
         </form>
       </div>
+    </section>
+
+    <!-- E-MAIL (admin) -->
+    <section data-panel="mail" hidden>
+      <div class="panel" style="max-width:760px">
+        <h2>Slanje e-mailom</h2>
+        <div id="mail-state"></div>
+      </div>
+      <div class="grid-2" id="mail-actions" hidden>
+        <div class="panel">
+          <h3>Pozivnice</h3>
+          <p class="hint mt0">Osobni link pozivnice uzvanicima koje ste dodali, a još je nisu dobili e-mailom.</p>
+          <p class="count-line" id="mail-count-invite"></p>
+          <button type="button" class="btn btn-gold" data-bulk="invite">Pošalji pozivnice</button>
+        </div>
+        <div class="panel">
+          <h3>Podsjetnik</h3>
+          <p class="hint mt0">Onima koji su dobili pozivnicu, a još nisu odgovorili.</p>
+          <p class="count-line" id="mail-count-reminder"></p>
+          <button type="button" class="btn btn-gold" data-bulk="reminder">Pošalji podsjetnik</button>
+        </div>
+        <div class="panel">
+          <h3>QR kodovi</h3>
+          <p class="hint mt0">QR kod se šalje automatski nakon potvrde. Ovdje ga možete poslati onima koji su potvrdili, a još ga nisu dobili e-mailom (npr. dodani s automatskom potvrdom).</p>
+          <p class="count-line" id="mail-count-qr"></p>
+          <button type="button" class="btn btn-gold" data-bulk="qr">Pošalji QR kodove</button>
+        </div>
+        <form class="panel" id="mail-test-form" novalidate>
+          <h3>Probni e-mail</h3>
+          <p class="hint mt0">Provjerite da slanje radi prije nego što pošaljete pozivnice.</p>
+          <div class="toolbar"><input type="email" id="mail-test-to" placeholder="vaš@email.hr" aria-label="Adresa za probni e-mail"><button class="btn btn-outline" type="submit">Pošalji probu</button></div>
+        </form>
+      </div>
+      <div id="mail-result"></div>
     </section>
 
     <!-- IZVOZ (admin) -->

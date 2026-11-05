@@ -54,6 +54,7 @@ function selectTab(name) {
   for (const p of $$('[data-panel]')) p.hidden = p.dataset.panel !== name;
   if (name !== 'scan') stopCamera();
   if (name === 'settings') loadSettings();
+  if (name === 'mail') loadMail();
   try { sessionStorage.setItem('zk_tab', name); } catch { /* */ }
 }
 
@@ -114,13 +115,15 @@ function renderList() {
       const dot = (g) => (g?.checkedInAt ? ` <span class="checked-dot" title="Došao ${fmtTime(g.checkedInAt)}">✓</span>` : '');
       return `<tr data-id="${inv.id}">
         <td><div class="main-name">${esc(inv.fullName)}${dot(primary)}</div>
-          ${comps.map((c) => `<div class="comp-name">${esc(companionLabel(c.fullName))}${dot(c)}</div>`).join('')}</td>
+          ${comps.map((c) => `<div class="comp-name">${esc(companionLabel(c.fullName))}${dot(c)}</div>`).join('')}
+          ${isAdmin() ? mailLine(inv) : ''}</td>
         <td>${badge(inv.status)}</td>
         <td>${inv.status === 'confirmed' ? `${inv.checkedInCount}/${inv.personCount}` : '—'}</td>
         <td><div class="row-actions">
           <button class="btn btn-outline btn-sm" data-act="open">${inv.status === 'confirmed' && inv.checkedInCount < inv.personCount ? 'Preuzimanje' : 'Otvori'}</button>
           ${isAdmin() ? `<button class="btn btn-outline btn-sm" data-act="edit">Uredi</button>
             <button class="btn btn-ghost btn-sm" data-act="link" title="Kopiraj osobni link pozivnice">Link</button>
+            ${inv.email && inv.status !== 'declined' ? `<button class="btn btn-ghost btn-sm" data-act="mail" title="${inv.status === 'confirmed' ? 'Pošalji QR kod e-mailom' : 'Pošalji pozivnicu e-mailom'}">${inv.status === 'confirmed' ? 'Pošalji QR' : 'Pošalji'}</button>` : ''}
             <button class="btn btn-danger btn-sm" data-act="delete">Obriši</button>` : ''}
         </div></td>
       </tr>`;
@@ -400,6 +403,13 @@ function openEdit(inv) {
       <div class="field" style="margin-top:14px"><label for="e-note">Napomena</label><input type="text" id="e-note" value="${esc(inv.note)}" maxlength="500"></div>
       <div class="field"><span class="label">Osobni link pozivnice</span>
         <div class="link-box"><span>${esc(inviteLink(inv))}</span><button type="button" class="btn btn-ghost btn-sm" id="e-copy">Kopiraj</button></div></div>
+      ${inv.email ? `<div class="field"><span class="label">E-mail</span>
+        <div class="hint">${mailHistory(inv)}</div>
+        <div class="actions" style="margin-top:6px">
+          ${inv.status === 'pending' ? `<button type="button" class="btn btn-outline btn-sm" data-send="invite">Pošalji pozivnicu</button>
+            <button type="button" class="btn btn-outline btn-sm" data-send="reminder">Pošalji podsjetnik</button>` : ''}
+          ${inv.status === 'confirmed' ? '<button type="button" class="btn btn-outline btn-sm" data-send="qr">Pošalji QR kod</button>' : ''}
+        </div></div>` : '<p class="hint">Za slanje e-mailom upišite e-mail adresu i spremite.</p>'}
       ${inv.status === 'confirmed' ? `<p class="hint">QR kod: <a href="/api/admin/qr/${inv.id}.png" target="_blank" rel="noopener">otvori sliku</a> · ${esc(inv.qrCode)}</p>` : ''}
       <div class="actions"><button class="btn btn-gold" type="submit">Spremi</button><button class="btn btn-outline" type="button" data-close>Odustani</button></div>
     </form>`);
@@ -410,6 +420,14 @@ function openEdit(inv) {
   $('#e-status', modal).addEventListener('change', toggle);
   toggle();
   $('#e-copy', modal).addEventListener('click', () => copyText(inviteLink(inv)));
+  $$('[data-send]', modal).forEach((b) =>
+    b.addEventListener('click', async () => {
+      b.disabled = true;
+      const updated = await sendOne(inv, b.dataset.send);
+      b.disabled = false;
+      if (updated) openEdit(updated); // osvježi prikaz povijesti slanja
+    }),
+  );
   $('#edit-form', modal).addEventListener('submit', async (e) => {
     e.preventDefault();
     const errBox = $('#edit-error', modal);
@@ -508,6 +526,87 @@ const renderBulk = (res) =>
   `<div class="alert ${res.errors.length ? 'alert-warn' : 'alert-ok'}">Dodano: <strong>${res.created.length}</strong>${
     res.errors.length ? `<br>Neuspješno (ostavljeno u polju za ispravak):<ul>${res.errors.map((x) => `<li>${x.line}. redak – ${esc(x.message)}</li>`).join('')}</ul>` : ''
   }</div>`;
+
+// ---------- admin: e-mail ----------
+
+const MAIL_LABEL = { invite: 'Pozivnica', reminder: 'Podsjetnik', qr: 'QR kod' };
+
+function mailHistory(inv) {
+  const parts = [];
+  if (inv.inviteSentAt) parts.push(`pozivnica ${fmtDateTime(inv.inviteSentAt)}`);
+  if (inv.reminderSentAt) parts.push(`podsjetnik ${fmtDateTime(inv.reminderSentAt)}`);
+  if (inv.qrSentAt) parts.push(`QR kod ${fmtDateTime(inv.qrSentAt)}`);
+  return `${esc(inv.email)}${parts.length ? ` · poslano: ${parts.join(', ')}` : ' · ništa još nije poslano'}`;
+}
+
+function mailLine(inv) {
+  if (!inv.email) return '<div class="hint">bez e-maila</div>';
+  const sent = inv.qrSentAt ? '✉ QR poslan' : inv.reminderSentAt ? '✉ podsjetnik poslan' : inv.inviteSentAt ? '✉ pozivnica poslana' : '';
+  return `<div class="hint">${esc(inv.email)}${sent ? ` · ${sent}` : ''}</div>`;
+}
+
+async function sendOne(inv, kind) {
+  try {
+    const res = await api(`/api/admin/invitations/${inv.id}/send`, { method: 'POST', body: { kind } });
+    replaceInvitation(res.invitation);
+    toast(`${MAIL_LABEL[kind]} poslan(a) na ${inv.email}.`);
+    return res.invitation;
+  } catch (err) {
+    toast(err.message, { error: true, timeout: 6000 });
+    return null;
+  }
+}
+
+async function loadMail() {
+  try {
+    const [status, preview] = await Promise.all([api('/api/admin/mail'), api('/api/admin/mail/preview')]);
+    $('#mail-actions').hidden = !status.enabled;
+    $('#mail-state').innerHTML = status.enabled
+      ? `<div class="alert alert-ok">Slanje e-maila je uključeno. Pošiljatelj: <strong>${esc(status.from)}</strong></div>`
+      : `<div class="alert alert-warn"><strong>Slanje e-maila još nije podešeno.</strong> Na poslužitelju treba upisati SMTP postavke
+          (SMTP_HOST, SMTP_USER, SMTP_PASS, MAIL_FROM) – npr. besplatni Brevo. Dok to nije podešeno, pozivnice se šalju kopiranjem linka.</div>`;
+    const line = (p) => `Za slanje: <strong>${p.withEmail}</strong>${p.withoutEmail ? ` · bez e-maila: ${p.withoutEmail}` : ''}`;
+    for (const kind of ['invite', 'reminder', 'qr']) {
+      $(`#mail-count-${kind}`).innerHTML = line(preview[kind]);
+      $(`[data-bulk="${kind}"]`).disabled = preview[kind].withEmail === 0;
+    }
+  } catch (err) {
+    toast(err.message, { error: true });
+  }
+}
+
+function setupMail() {
+  $$('[data-bulk]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      const kind = b.dataset.bulk;
+      const what = { invite: 'pozivnice', reminder: 'podsjetnike', qr: 'QR kodove' }[kind];
+      if (!confirm(`Poslati ${what} e-mailom? To može potrajati nekoliko minuta.`)) return;
+      $$('[data-bulk]').forEach((x) => (x.disabled = true));
+      $('#mail-result').innerHTML = '<div class="alert alert-info">Slanje u tijeku… ne zatvarajte stranicu.</div>';
+      try {
+        const r = await api('/api/admin/mail/bulk', { method: 'POST', body: { kind } });
+        $('#mail-result').innerHTML = `<div class="alert ${r.failed.length ? 'alert-warn' : 'alert-ok'}">
+          Poslano: <strong>${r.sent}</strong>
+          ${r.failed.length ? `<br>Nije poslano (${r.failed.length}):<ul>${r.failed.map((x) => `<li>${esc(x.name)} (${esc(x.email)}) – ${esc(x.message)}</li>`).join('')}</ul>` : ''}
+          ${r.withoutEmail.length ? `<br>Bez e-maila (${r.withoutEmail.length}): ${r.withoutEmail.map(esc).join(', ')}` : ''}
+          ${r.remaining ? `<br>Preostalo za sutra (dnevni limit): ${r.remaining}` : ''}</div>`;
+        loadList({ silent: true });
+      } catch (err) {
+        $('#mail-result').innerHTML = `<div class="alert alert-err">${esc(err.message)}</div>`;
+      }
+      loadMail();
+    }),
+  );
+  $('#mail-test-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await api('/api/admin/mail/test', { method: 'POST', body: { to: $('#mail-test-to').value } });
+      toast('Probni e-mail je poslan. Provjerite pretinac (i neželjenu poštu).');
+    } catch (err) {
+      toast(err.message, { error: true, timeout: 8000 });
+    }
+  });
+}
 
 // ---------- admin: izvoz ----------
 
@@ -649,12 +748,13 @@ async function init() {
     if (!b) return;
     const inv = invitations.find((i) => i.id === Number(b.closest('tr').dataset.id));
     if (!inv) return;
-    ({ open: openParty, edit: openEdit, delete: deleteInv, link: (x) => copyText(inviteLink(x)) })[b.dataset.act](inv);
+    ({ open: openParty, edit: openEdit, delete: deleteInv, link: (x) => copyText(inviteLink(x)), mail: (x) => sendOne(x, x.status === 'confirmed' ? 'qr' : x.inviteSentAt ? 'reminder' : 'invite') })[b.dataset.act](inv);
   });
 
   if (isAdmin()) {
     setupAdd();
     setupExport();
+    setupMail();
     setupSettings();
     loadSettings();
   }

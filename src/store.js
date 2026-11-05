@@ -33,6 +33,12 @@ function cleanEmail(value) {
   return v;
 }
 
+function guestEmail(value, required) {
+  const email = cleanEmail(value);
+  if (required && !email) throw new AppError(400, 'validation', 'Upišite e-mail adresu – na nju šaljemo QR kod.');
+  return email;
+}
+
 function cleanMaxCompanions(value, fallback) {
   if (value === undefined || value === null || value === '') return fallback;
   const n = Number(value);
@@ -118,6 +124,9 @@ function serialize(inv, guests) {
     source: inv.source,
     note: inv.note,
     respondedAt: inv.responded_at,
+    inviteSentAt: inv.invite_sent_at,
+    reminderSentAt: inv.reminder_sent_at,
+    qrSentAt: inv.qr_sent_at,
     createdAt: inv.created_at,
     guests: g,
     personCount: g.length || 1,
@@ -183,7 +192,7 @@ function syncGuests(db, invitationId, primary, companions) {
   for (const g of removed) db.prepare('DELETE FROM guests WHERE id = ?').run(g.id);
 }
 
-export function createInvitation(db, input, { source = 'invite' } = {}) {
+export function createInvitation(db, input, { source = 'invite', requireEmail = false } = {}) {
   const settings = getSettings(db);
   const confirm = Boolean(input.confirm) || source === 'open';
   const firstName = requireName(input.firstName, 'Ime');
@@ -192,6 +201,8 @@ export function createInvitation(db, input, { source = 'invite' } = {}) {
   // Administrator smije dodati više pratnje od zadanog broja; tada se limit podiže.
   const companions = cleanCompanions(input.companions, source === 'admin' ? undefined : maxCompanions);
   const effectiveMax = Math.max(maxCompanions, companions.length);
+  // Gost s općeg linka mora upisati e-mail za QR kod (kad je slanje podešeno)
+  const email = guestEmail(input.email, requireEmail && source === 'open');
 
   return tx(db, () => {
     const ts = now();
@@ -202,7 +213,7 @@ export function createInvitation(db, input, { source = 'invite' } = {}) {
       )
       .run(
         newToken(16), newToken(12), firstName, lastName,
-        cleanEmail(input.email), '', '', // organizacija i grupa se više ne koriste
+        email, '', '', // organizacija i grupa se više ne koriste
         effectiveMax, confirm ? 'confirmed' : 'pending', source, cleanText(input.note, 500),
         confirm ? ts : null, ts,
       );
@@ -213,7 +224,7 @@ export function createInvitation(db, input, { source = 'invite' } = {}) {
 }
 
 // Odgovor gosta preko linka pozivnice.
-export function respondToInvitation(db, token, input) {
+export function respondToInvitation(db, token, input, { requireEmail = false } = {}) {
   const inv = getInvitationByToken(db, token);
   if (!inv) throw new AppError(404, 'not_found', 'Pozivnica nije pronađena.');
   if (inv.checkedInCount > 0) {
@@ -229,8 +240,9 @@ export function respondToInvitation(db, token, input) {
     const firstName = requireName(input.firstName, 'Ime');
     const lastName = requireName(input.lastName, 'Prezime');
     const companions = cleanCompanions(input.companions, inv.maxCompanions).map((c) => ({ ...c, id: null }));
-    db.prepare("UPDATE invitations SET first_name = ?, last_name = ?, status = 'confirmed', responded_at = ? WHERE id = ?").run(
-      firstName, lastName, now(), inv.id,
+    const email = guestEmail('email' in input ? input.email : inv.email, requireEmail);
+    db.prepare("UPDATE invitations SET first_name = ?, last_name = ?, email = ?, status = 'confirmed', responded_at = ? WHERE id = ?").run(
+      firstName, lastName, email, now(), inv.id,
     );
     db.prepare('DELETE FROM guests WHERE invitation_id = ?').run(inv.id);
     syncGuests(db, inv.id, { firstName, lastName }, companions);
@@ -267,6 +279,14 @@ export function updateInvitation(db, id, input) {
     else syncGuests(db, inv.id, null, []);
     return getInvitationById(db, inv.id);
   });
+}
+
+const SENT_COLUMN = { invite: 'invite_sent_at', reminder: 'reminder_sent_at', qr: 'qr_sent_at' };
+export function markSent(db, id, kind) {
+  const col = SENT_COLUMN[kind];
+  if (!col) throw new Error('nepoznata vrsta e-maila');
+  db.prepare(`UPDATE invitations SET ${col} = ? WHERE id = ?`).run(now(), Number(id));
+  return getInvitationById(db, id);
 }
 
 export function deleteInvitation(db, id) {

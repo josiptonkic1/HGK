@@ -35,6 +35,17 @@ services:
         value: moderator
       - key: MODERATOR_PASSWORD
         generateValue: true
+      # E-mail (npr. Brevo: smtp-relay.brevo.com, port 587). Vrijednosti se upisuju u Renderu.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
     # Trajna baza (samo na plaćenom planu, npr. plan: starter):
     # disk:
     #   name: data

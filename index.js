@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { openDb } from './src/db.js';
 import { createApp } from './src/app.js';
 import { ensureSeedUsers } from './src/store.js';
+import { createMailer } from './src/mail.js';
 
 const PORT = Number(process.env.PORT || 3000);
 const DB_FILE = process.env.DB_FILE || './data/zlatna-kuna.db';
@@ -21,7 +22,16 @@ for (const u of seed.created) console.log(`Kreiran korisnik "${u.username}" (${u
 for (const u of seed.updated) console.log(`Lozinka za "${u.username}" (${u.role}) usklađena s varijablama okruženja.`);
 for (const e of seed.errors) console.error(`GREŠKA: korisnik "${e.username}" (${e.role}) nije postavljen: ${e.message}`);
 
+const mailer = createMailer(process.env);
+if (mailer) {
+  console.log(`E-mail: slanje preko ${process.env.SMTP_HOST} (pošiljatelj ${process.env.MAIL_FROM}).`);
+  mailer.verify().then(() => console.log('E-mail: SMTP prijava uspješna.')).catch((err) => console.error(`E-mail: SMTP prijava NIJE uspjela: ${err.message}`));
+} else {
+  console.log('E-mail: nije podešeno (SMTP_HOST i MAIL_FROM) - pozivnice i QR kodovi se ne šalju e-mailom.');
+}
+
 const app = createApp({
+  mailer,
   db,
   sessionSecret,
   secureCookies: process.env.COOKIE_SECURE === 'true',

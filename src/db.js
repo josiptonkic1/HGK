@@ -56,6 +56,11 @@ export function openDb(file) {
   const db = new DatabaseSync(file);
   if (file !== ':memory:') db.exec('PRAGMA journal_mode = WAL;');
   db.exec(SCHEMA);
+  // Nadogradnja postojeće baze: evidencija poslanih e-mailova
+  const cols = db.prepare('PRAGMA table_info(invitations)').all().map((c) => c.name);
+  for (const col of ['invite_sent_at', 'reminder_sent_at', 'qr_sent_at']) {
+    if (!cols.includes(col)) db.exec(`ALTER TABLE invitations ADD COLUMN ${col} TEXT`);
+  }
   return db;
 }
 

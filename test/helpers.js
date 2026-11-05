@@ -6,11 +6,26 @@ import { createUser } from '../src/store.js';
 export const ADMIN = { username: 'admin', password: 'admin-test-pass' };
 export const MOD = { username: 'moderator', password: 'mod-test-pass' };
 
-export function setup() {
+// Lažni poštanski servis: bilježi poslane poruke, može glumiti grešku.
+export function fakeMailer({ fail = false } = {}) {
+  const sent = [];
+  return {
+    from: 'Zlatna kuna <test@primjer.hr>',
+    delayMs: 0,
+    sent,
+    async send(msg) {
+      if (fail) throw new Error('SMTP nedostupan');
+      sent.push(msg);
+    },
+    async verify() {},
+  };
+}
+
+export function setup({ mailer = null } = {}) {
   const db = openDb(':memory:');
   createUser(db, { ...ADMIN, name: 'Admin Test', role: 'admin' });
   createUser(db, { ...MOD, name: 'Moderator Test', role: 'moderator' });
-  const app = createApp({ db, sessionSecret: 'test-secret-0123456789abcdef' });
+  const app = createApp({ db, sessionSecret: 'test-secret-0123456789abcdef', mailer });
 
   const login = async (creds) => {
     const agent = request.agent(app);
