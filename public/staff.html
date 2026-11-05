@@ -204,13 +204,19 @@
           <div class="seat-tools">
             <input type="search" id="seat-search" placeholder="Pretraži uzvanike…" aria-label="Pretraži uzvanike">
             <select id="seat-filter" aria-label="Prikaz">
-              <option value="missing">Bez (svih) mjesta</option>
+              <option value="missing">1. Bez mjesta (za raspoređivanje)</option>
+              <option value="unsent">2. S mjestom – e-mail nije poslan</option>
+              <option value="sent">S mjestom – e-mail poslan</option>
+              <option value="done">Svi s mjestom</option>
               <option value="all">Svi koji dolaze</option>
-              <option value="done">S dodijeljenim mjestom</option>
             </select>
           </div>
+          <label class="check seat-check-all"><input type="checkbox" id="seat-check-all"> <span>Označi sve prikazane s mjestom</span></label>
           <ul class="seat-list" id="seat-list"></ul>
-          <button type="button" class="btn btn-outline btn-sm btn-block" id="seat-bulk" disabled></button>
+          <div class="seat-send">
+            <button type="button" class="btn btn-gold btn-block" id="seat-bulk" disabled>Pošalji e-mail odabranima</button>
+            <p class="hint mt0" id="seat-send-hint"></p>
+          </div>
         </div>
         <div class="panel seat-main">
           <div class="seat-top">

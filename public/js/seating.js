@@ -10,6 +10,7 @@ let selectedId = null;
 let draft = [];
 let dirty = false;
 let zoom = 1;
+const checked = new Set(); // uzvanici označeni za skupno slanje mjesta
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 const confirmed = () => getList().filter((i) => i.status === 'confirmed');
@@ -63,17 +64,42 @@ function paintSeats() {
 
 // ---------- popis uzvanika ----------
 
-function renderSide() {
-  const all = confirmed();
+const canSend = (inv) => inv.seats.length > 0 && Boolean(inv.email);
+
+function visibleRows() {
   const f = $('#seat-filter').value;
   const q = normalize($('#seat-search').value).split(/\s+/).filter(Boolean);
-  const rows = all.filter((inv) => {
+  return confirmed().filter((inv) => {
     const full = inv.seats.length >= inv.personCount;
     if (f === 'missing' && full && inv.id !== selectedId) return false;
-    if (f === 'done' && !full) return false;
+    if (f === 'done' && !inv.seats.length) return false;
+    if (f === 'unsent' && !(inv.seats.length && !inv.seatSentAt)) return false;
+    if (f === 'sent' && !(inv.seats.length && inv.seatSentAt)) return false;
     const hay = normalize([inv.fullName, inv.email, ...inv.guests.map((g) => g.fullName)].join(' '));
     return q.every((w) => hay.includes(w));
   });
+}
+
+function renderSendBar(rows) {
+  const n = checked.size;
+  const bulk = $('#seat-bulk');
+  bulk.disabled = !n;
+  bulk.textContent = n ? `Pošalji e-mail odabranima (${n})` : 'Pošalji e-mail odabranima';
+  const resend = confirmed().filter((i) => checked.has(i.id) && i.seatSentAt).length;
+  $('#seat-send-hint').textContent = n
+    ? `${resend ? `${resend} od njih već je dobilo e-mail i dobit će ga ponovno. ` : ''}Dnevno se može poslati najviše 250.`
+    : 'Označite uzvanike kvačicom (ili „Označi sve prikazane”) pa pošaljite svima odjednom.';
+  const eligible = rows.filter(canSend);
+  const all = $('#seat-check-all');
+  all.disabled = !eligible.length;
+  all.checked = eligible.length > 0 && eligible.every((i) => checked.has(i.id));
+  all.indeterminate = !all.checked && eligible.some((i) => checked.has(i.id));
+}
+
+function renderSide() {
+  const all = confirmed();
+  for (const id of [...checked]) { const inv = all.find((i) => i.id === id); if (!inv || !canSend(inv)) checked.delete(id); }
+  const rows = visibleRows();
   const persons = all.reduce((a, i) => a + i.personCount, 0);
   const seated = all.reduce((a, i) => a + i.seats.length, 0);
   $('#seat-summary').innerHTML = `<strong>${seated}</strong> od <strong>${persons}</strong> osoba koje dolaze ima mjesto · slobodno ${allSeats().length - seated} mjesta`;
@@ -81,16 +107,17 @@ function renderSide() {
     ? rows.map((inv) => {
         const n = inv.seats.length;
         const state = n >= inv.personCount ? 'ok' : n ? 'part' : 'none';
-        return `<li><button type="button" data-id="${inv.id}" aria-pressed="${inv.id === selectedId}">
+        const mail = !n ? '' : inv.seatSentAt ? `<span class="sl-mail sent">✉ poslano ${fmtDateTime(inv.seatSentAt)}</span>`
+          : inv.email ? '<span class="sl-mail">e-mail nije poslan</span>' : '<span class="sl-mail none">nema e-mail adrese</span>';
+        return `<li class="sl-item">
+          ${canSend(inv) ? `<input type="checkbox" class="sl-check" data-check="${inv.id}" aria-label="Označi ${esc(inv.fullName)}" ${checked.has(inv.id) ? 'checked' : ''}>` : '<span class="sl-check"></span>'}
+          <button type="button" data-id="${inv.id}" aria-pressed="${inv.id === selectedId}">
           <span class="sl-name">${esc(inv.fullName)}${inv.personCount > 1 ? ` <span class="sl-plus">+${inv.personCount - 1}</span>` : ''}</span>
-          <span class="sl-seat sl-${state}">${n ? esc(inv.seatLabels.join(' · ')) : 'bez mjesta'}</span>
+          <span class="sl-seat sl-${state}">${n ? esc(inv.seatLabels.join(' · ')) : 'bez mjesta'}</span>${mail}
         </button></li>`;
       }).join('')
     : `<li class="empty">${all.length ? 'Nema uzvanika za ovaj prikaz.' : 'Još nitko nije potvrdio dolazak.'}</li>`;
-  const pendingMail = all.filter((i) => i.seats.length && !i.seatSentAt && i.email).length;
-  const bulk = $('#seat-bulk');
-  bulk.disabled = !pendingMail;
-  bulk.textContent = pendingMail ? `Pošalji mjesta e-mailom svima kojima nisu poslana (${pendingMail})` : 'Sva dodijeljena mjesta su poslana';
+  renderSendBar(rows);
 }
 
 // ---------- odabrani uzvanik ----------
@@ -112,8 +139,8 @@ function renderBar() {
       <button type="button" class="btn btn-outline btn-icon" id="sb-close" aria-label="Zatvori">✕</button></div>
     <ul class="sb-people">${rows}</ul>
     <div class="actions">
-      ${inv.email ? `<button type="button" class="btn btn-gold" id="sb-save-mail" ${draft.length ? '' : 'disabled'}>Spremi i pošalji e-mail</button>` : ''}
-      <button type="button" class="btn ${inv.email ? 'btn-outline' : 'btn-gold'}" id="sb-save" ${dirty ? '' : 'disabled'}>Spremi</button>
+      <button type="button" class="btn btn-gold" id="sb-save" ${dirty ? '' : 'disabled'}>Spremi i dalje</button>
+      ${inv.email ? `<button type="button" class="btn btn-outline" id="sb-save-mail" ${draft.length ? '' : 'disabled'}>Spremi i odmah pošalji e-mail</button>` : ''}
       <button type="button" class="btn btn-ghost" id="sb-clear" ${draft.length ? '' : 'disabled'}>Ukloni mjesta</button>
     </div>`;
 }
@@ -169,22 +196,30 @@ async function save(notify) {
       failed: `Spremljeno, ali e-mail nije poslan: ${res.message || ''}`,
       skipped: draft.length ? 'Mjesta su spremljena.' : 'Mjesta su uklonjena.',
     }[res.mail];
-    toast(msg, { error: res.mail === 'failed' });
+    const rows = visibleRows();
+    const at = rows.findIndex((i) => i.id === inv.id);
     onSaved(res.invitation);
+    // nakon spremanja odmah sljedeći uzvanik bez mjesta
+    const full = res.invitation.seats.length >= res.invitation.personCount;
+    const next = full ? [...rows.slice(at + 1), ...rows.slice(0, Math.max(at, 0))].find((i) => i.id !== inv.id && i.seats.length < i.personCount) : null;
+    toast(next ? `${msg} Sljedeći: ${next.fullName}` : msg, { error: res.mail === 'failed' });
+    if (next) select(next.id);
   } catch (err) {
     toast(err.message, { error: true });
   }
 }
 
 async function sendBulk() {
-  const n = confirmed().filter((i) => i.seats.length && !i.seatSentAt && i.email).length;
-  if (!n || !confirm(`Poslati e-mail s dodijeljenim mjestom ${n} uzvanika?`)) return;
+  const ids = [...checked];
+  if (!ids.length || !confirm(`Poslati e-mail sa sjedećim mjestom odabranim uzvanicima (${ids.length})?`)) return;
   const btn = $('#seat-bulk');
   btn.disabled = true;
-  btn.textContent = 'Šaljem…';
+  btn.textContent = `Šaljem ${ids.length}…`;
   try {
-    const r = await api('/api/admin/mail/bulk', { method: 'POST', body: { kind: 'seat' } });
-    toast(`Poslano: ${r.sent}${r.failed.length ? ` · nije uspjelo: ${r.failed.length}` : ''}`, { error: r.failed.length > 0 });
+    const r = await api('/api/admin/mail/bulk', { method: 'POST', body: { kind: 'seat', ids } });
+    const failed = new Set(r.failed.map((x) => x.email));
+    for (const inv of confirmed()) if (checked.has(inv.id) && !failed.has(inv.email)) checked.delete(inv.id);
+    toast(`Poslano: ${r.sent}${r.failed.length ? ` · nije uspjelo: ${r.failed.length} (ostali su označeni)` : ''}${r.remaining ? ` · preko dnevnog limita: ${r.remaining}` : ''}`, { error: r.failed.length > 0, timeout: 6000 });
   } catch (err) {
     toast(err.message, { error: true });
   }
@@ -217,6 +252,16 @@ export function setupSeating({ list, saved }) {
     if (id === 'sb-clear') { draft = []; dirty = true; renderBar(); paintSeats(); }
   });
   for (const id of ['#seat-search', '#seat-filter']) $(id).addEventListener('input', renderSide);
+  $('#seat-list').addEventListener('change', (e) => {
+    const c = e.target.closest('input[data-check]');
+    if (!c) return;
+    if (c.checked) checked.add(Number(c.dataset.check)); else checked.delete(Number(c.dataset.check));
+    renderSendBar(visibleRows());
+  });
+  $('#seat-check-all').addEventListener('change', (e) => {
+    for (const inv of visibleRows().filter(canSend)) if (e.target.checked) checked.add(inv.id); else checked.delete(inv.id);
+    renderSide();
+  });
   $('#seat-bulk').addEventListener('click', sendBulk);
   $('#seat-zoom-in').addEventListener('click', () => setZoom(zoom + 0.5));
   $('#seat-zoom-out').addEventListener('click', () => setZoom(zoom - 0.5));

@@ -81,6 +81,23 @@ describe('tlocrt: dodjela sjedećih mjesta', () => {
     assert.match(preview.html, /Galerija, red 2, sjedalo 10/);
   });
 
+  test('prvo raspored bez slanja, zatim e-mail samo odabranima (i ponovno slanje)', async () => {
+    const { mailer, a, ivan, ana, pending } = await seeded();
+    await put(a, ivan, { seats: ['P-2-1', 'P-2-2'] });
+    await put(a, ana, { seats: ['P-2-3'] });
+    assert.equal(mailer.sent.filter((m) => /sjedeće/.test(m.subject)).length, 0, 'spremanje ne šalje e-mail');
+
+    const r1 = (await a.post('/api/admin/mail/bulk').send({ kind: 'seat', ids: [ana.id, pending.id] })).body;
+    assert.equal(r1.sent, 1, 'samo odabrani i samo oni s mjestom');
+    assert.equal(mailer.sent.at(-1).to, 'ana@primjer.hr');
+
+    const r2 = (await a.post('/api/admin/mail/bulk').send({ kind: 'seat', ids: [ana.id, ivan.id] })).body;
+    assert.equal(r2.sent, 2, 'odabranima se šalje i ako su već dobili e-mail');
+
+    const bad = await a.post('/api/admin/mail/bulk').send({ kind: 'invite', ids: [ana.id] });
+    assert.equal(bad.status, 400);
+  });
+
   test('moderator ne može dodjeljivati mjesta', async () => {
     const { ctx, ivan } = await seeded();
     const m = await ctx.moderator();

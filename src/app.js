@@ -398,7 +398,14 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
     const kind = String(req.body?.kind || '');
     if (!MAIL_KINDS.includes(kind)) throw new AppError(400, 'validation', 'Nepoznata vrsta e-maila.');
     if (!mailer) throw new AppError(400, 'mail_disabled', MAIL_OFF);
-    const targets = bulkTargets(kind, store.listInvitations(db));
+    const list = store.listInvitations(db);
+    let targets = bulkTargets(kind, list);
+    // Mjesta odabranim uzvanicima (ids): šalje se i onima kojima je već poslano (ponovno slanje).
+    if (Array.isArray(req.body?.ids)) {
+      if (kind !== 'seat') throw new AppError(400, 'validation', 'Odabir uzvanika podržan je samo za slanje mjesta.');
+      const ids = new Set(req.body.ids.map(Number));
+      targets = list.filter((i) => ids.has(i.id) && i.status === 'confirmed' && i.seats.length > 0);
+    }
     const LIMIT = 250; // besplatni paketi imaju dnevni limit (Brevo: 300/dan)
     const all = targets.filter((i) => i.email);
     const result = { sent: 0, failed: [], withoutEmail: targets.filter((i) => !i.email).map((i) => i.fullName), remaining: Math.max(0, all.length - LIMIT) };

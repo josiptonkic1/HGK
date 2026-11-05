@@ -583,3 +583,12 @@ input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) { 
   .seat-side { position: static; }
   .seat-list { max-height: 260px; }
 }
+
+/* Tlocrt: označavanje za skupno slanje */
+.seat-check-all { margin: 0 0 8px; font-size: 14px; }
+.sl-item { display: grid; grid-template-columns: 26px minmax(0, 1fr); align-items: center; gap: 4px; }
+.sl-check { width: 18px; height: 18px; accent-color: var(--gold); cursor: pointer; justify-self: center; }
+.sl-mail { font-size: 11.5px; color: var(--muted); }
+.sl-mail.sent { color: #a9e3bd; }
+.sl-mail.none { color: #f4b3ab; }
+.seat-send { display: grid; gap: 6px; }
