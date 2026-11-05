@@ -571,6 +571,28 @@ function mailStage(inv) {
 function renderMailList() {
   const body = $('#mail-list');
   if (!body) return;
+  // Sačuvaj nespremljene upise imena i fokus (popis se osvježava svakih 15 s)
+  const dirty = new Map();
+  body.querySelectorAll('tr').forEach((tr) => {
+    const save = tr.querySelector('[data-mact="save"]');
+    if (save && !save.hidden) dirty.set(tr.dataset.id, { first: tr.querySelector('[data-f="first"]').value, last: tr.querySelector('[data-f="last"]').value });
+  });
+  const active = document.activeElement?.closest?.('#mail-list tr') ? { id: document.activeElement.closest('tr').dataset.id, f: document.activeElement.dataset.f, pos: document.activeElement.selectionStart } : null;
+  renderMailRows(body);
+  dirty.forEach((v, id) => {
+    const tr = body.querySelector(`tr[data-id="${id}"]`);
+    if (!tr) return;
+    tr.querySelector('[data-f="first"]').value = v.first;
+    tr.querySelector('[data-f="last"]').value = v.last;
+    tr.querySelector('[data-mact="save"]').hidden = false;
+  });
+  if (active?.f) {
+    const el = body.querySelector(`tr[data-id="${active.id}"] [data-f="${active.f}"]`);
+    if (el) { el.focus(); try { el.setSelectionRange(active.pos, active.pos); } catch { /* */ } }
+  }
+}
+
+function renderMailRows(body) {
   const f = $('#mail-filter').value;
   const q = $('#mail-search').value;
   const pending = invitations.filter((i) => i.status === 'pending');
@@ -608,13 +630,80 @@ function renderMailList() {
       else if (!mailEnabled) action = '<button class="btn btn-ghost btn-sm" data-mact="link">Kopiraj link</button>';
       else if (stage === 'not_invited') action = '<button class="btn btn-gold btn-sm" data-mact="invite">Pošalji pozivnicu</button>';
       else action = '<button class="btn btn-outline btn-sm" data-mact="reminder">Pošalji podsjetnik</button>';
+      // Ime i prezime primatelja uređuju se izravno (npr. za opće adrese tipa gospodarstvo@...)
+      const first = inv.hasName ? inv.firstName : '';
+      const last = inv.hasName ? inv.lastName : '';
       return `<tr data-id="${inv.id}">
-        <td><div class="main-name">${inv.hasName ? esc(inv.fullName) : "<span class=\"hint\">ime nije upisano</span>"}</div><div class="hint">${esc(inv.email) || "bez e-maila"}</div></td>
+        <td>
+          <div class="name-edit">
+            <input type="text" data-f="first" value="${esc(first)}" placeholder="Ime" aria-label="Ime primatelja" maxlength="80">
+            <input type="text" data-f="last" value="${esc(last)}" placeholder="Prezime" aria-label="Prezime primatelja" maxlength="80">
+            <button class="btn btn-outline btn-sm" data-mact="save" hidden>Spremi</button>
+          </div>
+          <div class="hint">${esc(inv.email) || 'bez e-maila'}${inv.hasName ? '' : ' · <em>ime nije upisano – pozivnica bez imena</em>'}</div>
+        </td>
         <td class="hint">${sent}</td>
-        <td><div class="row-actions">${action}</div></td>
+        <td><div class="row-actions">${stage === 'no_email' ? '' : '<button class="btn btn-ghost btn-sm" data-mact="preview">Pregled</button>'}${action}</div></td>
       </tr>`;
     })
     .join('');
+}
+
+// Spremi ime i prezime primatelja iz retka (prazno = pozivnica bez imena).
+async function saveRecipientName(inv, row) {
+  const firstName = row.querySelector('[data-f="first"]').value.trim();
+  const lastName = row.querySelector('[data-f="last"]').value.trim();
+  if (Boolean(firstName) !== Boolean(lastName)) {
+    toast('Upišite i ime i prezime (ili ostavite oba prazna).', { error: true });
+    return null;
+  }
+  try {
+    const res = await api(`/api/admin/invitations/${inv.id}`, { method: 'PUT', body: { firstName, lastName } });
+    const i = invitations.findIndex((x) => x.id === inv.id);
+    if (i >= 0) invitations[i] = res.invitation;
+    toast(firstName ? `Spremljeno: ${firstName} ${lastName}` : 'Spremljeno: pozivnica bez imena');
+    renderMailList();
+    loadList({ silent: true });
+    return res.invitation;
+  } catch (err) {
+    toast(err.message, { error: true });
+    return null;
+  }
+}
+
+// Pregled e-maila točno kako će ga uzvanik dobiti, uz slanje iz pregleda.
+async function openMailPreview(inv, kind) {
+  let p;
+  try {
+    p = await api(`/api/admin/invitations/${inv.id}/preview?kind=${kind}`);
+  } catch (err) {
+    return toast(err.message, { error: true });
+  }
+  const m = openModal(`
+    <div class="modal-head"><h2>Pregled e-maila</h2><button class="btn btn-outline btn-icon" data-close aria-label="Zatvori">✕</button></div>
+    <div class="meta"><strong>Za:</strong> ${esc(p.to)}<br><strong>Predmet:</strong> ${esc(p.subject)}</div>
+    ${p.hasName ? '' : '<div class="alert alert-warn">Ime primatelja nije upisano – pozivnica počinje s „Poštovani,” bez imena, a osoba ime upisuje sama na linku.</div>'}
+    <iframe class="mail-preview" sandbox title="Pregled e-maila"></iframe>
+    <p class="hint">Gumb u e-mailu vodi na osobni link: <a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.link)}</a></p>
+    <div class="actions">
+      ${mailEnabled ? `<button class="btn btn-gold btn-block" id="pv-send">${kind === 'reminder' ? 'Pošalji podsjetnik' : 'Pošalji pozivnicu'}</button>` : '<p class="hint">Slanje e-maila nije podešeno – link možete kopirati i poslati ručno.</p>'}
+      <button class="btn btn-outline btn-block" data-close>Zatvori</button>
+    </div>`);
+  m.classList.add('modal-wide');
+  $('.mail-preview', m).srcdoc = p.html;
+  $('#pv-send', m)?.addEventListener('click', async (e) => {
+    e.target.disabled = true;
+    e.target.textContent = 'Šaljem…';
+    const updated = await sendOne(inv, kind);
+    if (updated) {
+      closeModal();
+      renderMailList();
+      loadMail();
+    } else {
+      e.target.disabled = false;
+      e.target.textContent = kind === 'reminder' ? 'Pošalji podsjetnik' : 'Pošalji pozivnicu';
+    }
+  });
 }
 
 async function loadMail() {
@@ -640,6 +729,17 @@ async function loadMail() {
 function setupMail() {
   $('#mail-filter').addEventListener('input', renderMailList);
   $('#mail-search').addEventListener('input', renderMailList);
+  // promjena imena u retku -> prikaži "Spremi"; Enter sprema
+  $('#mail-list').addEventListener('input', (e) => {
+    const row = e.target.closest('tr');
+    if (row && e.target.matches('[data-f]')) row.querySelector('[data-mact="save"]').hidden = false;
+  });
+  $('#mail-list').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.matches('[data-f]')) {
+      e.preventDefault();
+      e.target.closest('tr').querySelector('[data-mact="save"]').click();
+    }
+  });
   $('#mail-list').addEventListener('click', async (e) => {
     const b = e.target.closest('button[data-mact]');
     const inv = b && invitations.find((i) => i.id === Number(b.closest('tr').dataset.id));
@@ -647,6 +747,13 @@ function setupMail() {
     const act = b.dataset.mact;
     if (act === 'edit') return openEdit(inv);
     if (act === 'link') return copyText(inviteLink(inv));
+    if (act === 'save') return saveRecipientName(inv, b.closest('tr'));
+    if (act === 'preview') {
+      // nespremljeno ime se prvo spremi, da pregled bude točan
+      const row = b.closest('tr');
+      if (!row.querySelector('[data-mact="save"]').hidden && !(await saveRecipientName(inv, row))) return;
+      return openMailPreview(invitations.find((i) => i.id === inv.id), mailStage(inv) === 'waiting' ? 'reminder' : 'invite');
+    }
     b.disabled = true;
     b.textContent = 'Šaljem…';
     const updated = await sendOne(inv, act);

@@ -378,3 +378,9 @@ body.staff { background: var(--bg-2); min-height: 100vh; }
 }
 .zk-logo.has-video .num { font-size: 72px; }
 @media (max-width: 520px) { .zk-logo.has-video .num { font-size: 60px; } }
+
+/* E-mail kartica: ime primatelja u retku i pregled e-maila */
+.name-edit { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+.name-edit input { flex: 1 1 110px; min-width: 0; padding: 7px 9px; font-size: 14px; }
+.modal.modal-wide { max-width: 760px; }
+.mail-preview { width: 100%; height: min(62vh, 640px); border: 1px solid var(--line); border-radius: 10px; background: #0c0a07; margin: 8px 0; }

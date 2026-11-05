@@ -107,21 +107,23 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
   const MAIL_KINDS = ['invite', 'reminder', 'qr'];
   const MAIL_OFF = 'Slanje e-maila nije podešeno (BREVO_API_KEY i MAIL_FROM na poslužitelju).';
 
-  async function sendMail(kind, inv, req) {
-    if (!mailer) throw new AppError(400, 'mail_disabled', MAIL_OFF);
+  // Sastavi e-mail (isti za pregled i za slanje). forPreview: QR slika uvijek s poveznice.
+  async function buildMail(kind, inv, req, { forPreview = false } = {}) {
     if (!inv.email) throw new AppError(400, 'no_email', `${inv.fullName} nema upisanu e-mail adresu.`);
     const link = inviteLink(req, inv);
-    let msg;
     if (kind === 'qr') {
       if (inv.status !== 'confirmed') throw new AppError(400, 'validation', 'QR kod se šalje samo uzvanicima koji su potvrdili dolazak.');
       const png = await QRCode.toBuffer(inv.qrCode, { errorCorrectionLevel: 'M', margin: 3, width: 600 });
-      const imageUrl = mailer.inlineImages === false ? `${baseUrl(req)}/api/invite/${inv.token}/qr.png` : undefined;
-      msg = qrEmail(inv, link, png, { imageUrl });
-    } else if (kind === 'reminder') {
-      msg = reminderEmail(inv, link);
-    } else {
-      msg = invitationEmail(inv, link);
+      const imageUrl = forPreview || mailer?.inlineImages === false ? `${baseUrl(req)}/api/invite/${inv.token}/qr.png` : undefined;
+      return qrEmail(inv, link, png, { imageUrl });
     }
+    if (kind === 'reminder') return reminderEmail(inv, link);
+    return invitationEmail(inv, link);
+  }
+
+  async function sendMail(kind, inv, req) {
+    if (!mailer) throw new AppError(400, 'mail_disabled', MAIL_OFF);
+    const msg = await buildMail(kind, inv, req);
     await mailer.send({ to: inv.email, ...msg });
     return store.markSent(db, inv.id, kind);
   }
@@ -329,6 +331,16 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
       throw new AppError(502, 'mail_failed', `E-mail nije poslan: ${err.message}`);
     }
     res.json({ ok: true });
+  }));
+
+  // Pregled e-maila prije slanja (radi i kad slanje još nije podešeno)
+  app.get('/api/admin/invitations/:id/preview', admin, wrap(async (req, res) => {
+    const kind = String(req.query.kind || 'invite');
+    if (!MAIL_KINDS.includes(kind)) throw new AppError(400, 'validation', 'Nepoznata vrsta e-maila.');
+    const inv = store.getInvitationById(db, req.params.id);
+    if (!inv) throw new AppError(404, 'not_found', 'Uzvanik nije pronađen.');
+    const msg = await buildMail(kind, inv, req, { forPreview: true });
+    res.json({ to: inv.email, subject: msg.subject, html: msg.html, link: inviteLink(req, inv), hasName: inv.hasName });
   }));
 
   // Pojedinačno: kind = invite | reminder | qr

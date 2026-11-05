@@ -112,6 +112,25 @@ describe('pozivnica na opću adresu (samo e-mail, bez imena)', () => {
     assert.equal(named.body.invitation.fullName, 'Ana Anić');
   });
 
+  test('pregled personalizirane pozivnice prije slanja (i bez podešenog slanja)', async () => {
+    const ctx = setup();
+    const a = await ctx.admin();
+    const inv = (await a.post('/api/admin/invitations').send({ email: 'gospodarstvo@tvrtka.hr' })).body.invitation;
+    const p1 = (await a.get(`/api/admin/invitations/${inv.id}/preview?kind=invite`)).body;
+    assert.equal(p1.to, 'gospodarstvo@tvrtka.hr');
+    assert.equal(p1.hasName, false);
+    assert.match(p1.subject, /Pozivnica/);
+    assert.match(p1.html, new RegExp(`/p/${inv.token}`));
+    // upiše se osoba -> pregled je personaliziran
+    await a.put(`/api/admin/invitations/${inv.id}`).send({ firstName: 'Marija', lastName: 'Marić' });
+    const p2 = (await a.get(`/api/admin/invitations/${inv.id}/preview?kind=invite`)).body;
+    assert.equal(p2.hasName, true);
+    assert.match(p2.html, /<strong>Marija Marić<\/strong>/);
+    assert.match((await a.get(`/api/admin/invitations/${inv.id}/preview?kind=reminder`)).body.subject, /Podsjetnik/);
+    const m = await ctx.moderator();
+    assert.equal((await m.get(`/api/admin/invitations/${inv.id}/preview`)).status, 403);
+  });
+
   test('skupni unos: redak samo s e-mailom', async () => {
     const ctx = setup();
     const a = await ctx.admin();
