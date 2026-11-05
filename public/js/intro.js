@@ -45,6 +45,13 @@
   document.documentElement.appendChild(ov);
   var fg = ov.querySelector('.zk-fg');
   var bg = ov.querySelector('.zk-bg');
+  // iPhone (Safari) pušta video automatski samo ako je bez zvuka i "inline" - postavi i kao svojstvo
+  [fg, bg].forEach(function (v) {
+    v.muted = true;
+    v.defaultMuted = true;
+    v.playsInline = true;
+    v.setAttribute('webkit-playsinline', '');
+  });
 
   var finished = false;
   function finish() {
@@ -62,7 +69,9 @@
 
   function play() {
     var p = fg.play();
-    if (p && p.catch) p.catch(function () { finish(); });
+    // NotAllowedError = preglednik ne dopušta automatsko puštanje (npr. štednja baterije) -> preskoči uvod.
+    // Ostale greške (npr. datoteka ne postoji) rješava 'error' događaj (prebacivanje na drugi video).
+    if (p && p.catch) p.catch(function (err) { if (err && err.name === 'NotAllowedError') finish(); });
     if (!ov.classList.contains('full')) bg.play().catch(function () {});
   }
 
@@ -75,17 +84,15 @@
   }
 
   if (portrait) {
-    // uspravni video ispunjava cijeli uspravni ekran; pušta se tek kad je učitan,
-    // a ako ne postoji (404), mirno se prelazi na položeni video
+    // uspravni video ispunjava cijeli uspravni ekran. Pokreće se odmah: iPhone ne počne
+    // učitavati video dok se ne pozove play(). Ako ne postoji (404), prelazi se na položeni.
     ov.classList.add('full');
-    var onReady = function () { play(); };
-    fg.addEventListener('canplay', onReady, { once: true });
     fg.addEventListener('error', function () {
-      fg.removeEventListener('canplay', onReady);
       fg.addEventListener('error', finish);
       useLandscape();
     }, { once: true });
     fg.src = PORTRAIT;
+    play();
   } else {
     fg.addEventListener('error', finish);
     useLandscape();
@@ -107,7 +114,8 @@
   // ako se video ne pokrene brzo (spora veza, blokirano automatsko puštanje) - preskoči
   var started = false;
   fg.addEventListener('playing', function () { started = true; });
-  setTimeout(function () { if (!started) finish(); }, 4000);
+  // (mobilna mreža: video od ~10 MB treba sekundu-dvije da krene)
+  setTimeout(function () { if (!started) finish(); }, 6000);
   // sigurnosno: najdulje 15 s
   setTimeout(finish, 15000);
 })();
