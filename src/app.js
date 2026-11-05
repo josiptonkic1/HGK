@@ -8,6 +8,7 @@ import { EVENT } from './event.js';
 import * as store from './store.js';
 import { AppError } from './store.js';
 import { buildPdf, buildXlsx, FILTERS } from './export.js';
+import { buildSeatingPdf } from './seating-pdf.js';
 import { invitationEmail, reminderEmail, qrEmail, seatEmail } from './mail.js';
 
 const require = createRequire(import.meta.url);
@@ -316,6 +317,13 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
     const inv = store.getInvitationById(db, req.params.id);
     if (!inv) throw new AppError(404, 'not_found', 'Uzvanik nije pronađen.');
     res.set('Content-Type', 'image/png').send(await QRCode.toBuffer(inv.qrCode, { errorCorrectionLevel: 'M', margin: 3, width: 800 }));
+  }));
+
+  // Raspored sjedenja: tlocrt + popis po mjestima + abecedni popis
+  app.get('/api/admin/seating.pdf', admin, wrap(async (req, res) => {
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="zlatna-kuna-31-raspored-sjedenja-${stamp}.pdf"` })
+      .send(await buildSeatingPdf(store.listInvitations(db)));
   }));
 
   app.get('/api/admin/export.:format', admin, wrap(async (req, res) => {

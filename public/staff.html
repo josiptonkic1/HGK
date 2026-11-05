@@ -225,6 +225,7 @@
               <span><i class="lg-mine"></i>odabrani uzvanik</span>
               <span><i class="lg-taken"></i>zauzeto</span>
             </div>
+            <a class="btn btn-outline btn-sm" href="/api/admin/seating.pdf" download>Preuzmi PDF rasporeda</a>
             <div class="seat-zoom">
               <button type="button" class="btn btn-outline btn-icon" id="seat-zoom-out" aria-label="Umanji">−</button>
               <span id="seat-zoom-val">100 %</span>
@@ -256,6 +257,11 @@
           <a class="btn btn-gold" id="export-pdf" href="#">Preuzmi PDF</a>
           <a class="btn btn-gold" id="export-xlsx" href="#">Preuzmi Excel</a>
         </div>
+      </div>
+      <div class="panel" style="max-width:720px">
+        <h2>Raspored sjedenja</h2>
+        <p class="hint mt0">Tlocrt dvorane sa zauzetim mjestima i uz njega popis tko gdje sjedi (po redovima i ložama), zatim potvrđeni koji još nemaju mjesto i abecedni popis „osoba → mjesto” za hostese na ulazu. Format A3, položeno.</p>
+        <div class="actions"><a class="btn btn-gold" href="/api/admin/seating.pdf" download>Preuzmi PDF rasporeda</a></div>
       </div>
     </section>
 

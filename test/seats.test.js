@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { setup, fakeMailer } from './helpers.js';
+import { setup, fakeMailer, binary } from './helpers.js';
+import { seatingRows } from '../src/seating-pdf.js';
 import { allSeats, isSeat, seatLabel } from '../public/js/seatplan.js';
 
 describe('tlocrt: model dvorane', () => {
@@ -96,6 +97,23 @@ describe('tlocrt: dodjela sjedećih mjesta', () => {
 
     const bad = await a.post('/api/admin/mail/bulk').send({ kind: 'invite', ids: [ana.id] });
     assert.equal(bad.status, 400);
+  });
+
+  test('PDF rasporeda sjedenja: redoslijed po mjestima, bez mjesta, abecedno', async () => {
+    const { a, ivan, ana } = await seeded();
+    await put(a, ivan, { seats: ['B-1-1'] });
+    await put(a, ana, { seats: ['P-3-4'] });
+    const list = (await a.get('/api/staff/invitations')).body.invitations;
+    const { seated, unseated, alphabetical } = seatingRows(list);
+    assert.deepEqual(seated.map((r) => r.name), ['Ana Kovač', 'Ivan Horvat'], 'parter prije balkona');
+    assert.deepEqual(unseated.map((r) => r.name), ['Maja Horvat'], 'pratnja bez mjesta');
+    assert.equal(unseated[0].host, 'Ivan Horvat');
+    assert.deepEqual(alphabetical.map((r) => r.name), ['Ana Kovač', 'Ivan Horvat']);
+
+    const res = await a.get('/api/admin/seating.pdf').buffer(true).parse(binary);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers['content-type'], 'application/pdf');
+    assert.equal(res.body.subarray(0, 5).toString(), '%PDF-');
   });
 
   test('moderator ne može dodjeljivati mjesta', async () => {
