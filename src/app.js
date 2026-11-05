@@ -105,7 +105,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
   const baseUrl = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
   const inviteLink = (req, inv) => `${baseUrl(req)}/p/${inv.token}`;
   const MAIL_KINDS = ['invite', 'reminder', 'qr'];
-  const MAIL_OFF = 'Slanje e-maila nije podešeno (SMTP postavke na poslužitelju).';
+  const MAIL_OFF = 'Slanje e-maila nije podešeno (BREVO_API_KEY i MAIL_FROM na poslužitelju).';
 
   async function sendMail(kind, inv, req) {
     if (!mailer) throw new AppError(400, 'mail_disabled', MAIL_OFF);
@@ -114,7 +114,9 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
     let msg;
     if (kind === 'qr') {
       if (inv.status !== 'confirmed') throw new AppError(400, 'validation', 'QR kod se šalje samo uzvanicima koji su potvrdili dolazak.');
-      msg = qrEmail(inv, link, await QRCode.toBuffer(inv.qrCode, { errorCorrectionLevel: 'M', margin: 3, width: 600 }));
+      const png = await QRCode.toBuffer(inv.qrCode, { errorCorrectionLevel: 'M', margin: 3, width: 600 });
+      const imageUrl = mailer.inlineImages === false ? `${baseUrl(req)}/api/invite/${inv.token}/qr.png` : undefined;
+      msg = qrEmail(inv, link, png, { imageUrl });
     } else if (kind === 'reminder') {
       msg = reminderEmail(inv, link);
     } else {

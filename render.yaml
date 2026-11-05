@@ -35,7 +35,10 @@ services:
         value: moderator
       - key: MODERATOR_PASSWORD
         generateValue: true
-      # E-mail (npr. Brevo: smtp-relay.brevo.com, port 587). Vrijednosti se upisuju u Renderu.
+      # E-mail. Na besplatnom Renderu SMTP portovi su blokirani - koristite BREVO_API_KEY (xkeysib-...).
+      - key: BREVO_API_KEY
+        sync: false
+      # SMTP (samo ako hosting dopušta SMTP), npr. smtp-relay.brevo.com, port 587
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

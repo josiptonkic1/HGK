@@ -51,15 +51,14 @@ Kad je e-mail podešen:
 - admin u kartici **E-mail** šalje **pozivnice** (osobni link) uzvanicima koje je dodao, **podsjetnike** onima koji nisu odgovorili i **QR kodove** potvrđenima koji ga još nisu dobili. Ista se slanja mogu napraviti i pojedinačno (Popis → Pošalji, ili Uredi);
 - aplikacija pamti što je kome poslano, pa se pozivnica ne šalje dvaput.
 
-Podešavanje (besplatno, npr. [Brevo](https://www.brevo.com): 300 e-mailova dnevno, ne treba vlastita domena) – na Renderu u **Environment**:
+Podešavanje (besplatno, [Brevo](https://www.brevo.com): 300 e-mailova dnevno) – na Renderu u **Environment**:
 
 | Varijabla | Vrijednost |
 |---|---|
-| `SMTP_HOST` | `smtp-relay.brevo.com` |
-| `SMTP_PORT` | `587` |
-| `SMTP_USER` | Brevo SMTP login (Brevo → SMTP & API → SMTP) |
-| `SMTP_PASS` | Brevo SMTP ključ |
+| `BREVO_API_KEY` | API ključ iz Breva (**SMTP & API → API Keys → Generate a new API key**, počinje s `xkeysib-`) |
 | `MAIL_FROM` | npr. `31. Zlatna kuna <vasa-adresa@primjer.hr>` (adresa potvrđena u Brevu kao pošiljatelj) |
+
+Besplatni Render **blokira SMTP portove**, zato se šalje preko Brevo HTTP API-ja. Na vlastitom serveru može i SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`).
 
 Bez tih varijabli aplikacija radi kao i prije (e-mail na pozivnici nije obavezan, ništa se ne šalje).
 

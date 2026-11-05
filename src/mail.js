@@ -1,20 +1,80 @@
-// Slanje e-maila preko SMTP-a (Brevo, Gmail, HGK mail server...).
-// Podešava se varijablama okruženja: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM.
+// Slanje e-maila. Dva načina (varijable okruženja):
+//  1) Brevo HTTP API (preporučeno; radi i na besplatnom Renderu koji blokira SMTP portove):
+//       BREVO_API_KEY=xkeysib-...   MAIL_FROM="31. Zlatna kuna <adresa@primjer.hr>"
+//  2) SMTP (Brevo, Gmail, HGK mail server...): SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM
 import nodemailer from 'nodemailer';
 import { EVENT } from './event.js';
 
-export function createMailer(env = process.env) {
-  if (!env.SMTP_HOST || !env.MAIL_FROM) return null;
+const TIMEOUT_MS = 20000;
+
+// "31. Zlatna kuna <a@b.hr>" -> { name, email }
+export function parseFrom(from) {
+  const m = String(from || '').match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  return m ? { name: m[1].trim() || undefined, email: m[2].trim() } : { email: String(from || '').trim() };
+}
+
+function brevoApiMailer(env, fetchImpl = fetch) {
+  const sender = parseFrom(env.MAIL_FROM);
+  const call = async (path, init) => {
+    const res = await fetchImpl(`https://api.brevo.com/v3${path}`, {
+      ...init,
+      headers: { 'api-key': env.BREVO_API_KEY, accept: 'application/json', 'content-type': 'application/json', ...(init?.headers || {}) },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      let msg = text;
+      try { msg = JSON.parse(text).message || text; } catch { /* */ }
+      throw new Error(`Brevo API (${res.status}): ${msg}`);
+    }
+    return text ? JSON.parse(text) : {};
+  };
+  return {
+    kind: 'brevo-api',
+    from: env.MAIL_FROM,
+    inlineImages: false, // slika QR koda ide kao link + privitak
+    async send(msg) {
+      await call('/smtp/email', {
+        method: 'POST',
+        body: JSON.stringify({
+          sender,
+          to: [{ email: msg.to }],
+          subject: msg.subject,
+          htmlContent: msg.html,
+          textContent: msg.text,
+          attachment: (msg.attachments || []).map((a) => ({ name: a.filename, content: Buffer.from(a.content).toString('base64') })),
+        }),
+      });
+    },
+    verify: () => call('/account', { method: 'GET' }),
+  };
+}
+
+export function createMailer(env = process.env, { fetchImpl } = {}) {
+  if (!env.MAIL_FROM) return null;
+  if (env.BREVO_API_KEY) return brevoApiMailer(env, fetchImpl);
+  if (!env.SMTP_HOST) return null;
   const port = Number(env.SMTP_PORT || 587);
   const transporter = nodemailer.createTransport({
     host: env.SMTP_HOST,
     port,
     secure: port === 465,
     auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
+    // bez ovoga bi slanje "visjelo" minutama kad je port blokiran
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: TIMEOUT_MS,
   });
   return {
+    kind: 'smtp',
     from: env.MAIL_FROM,
-    send: (msg) => transporter.sendMail({ from: env.MAIL_FROM, ...msg }),
+    inlineImages: true,
+    send: (msg) => transporter.sendMail({ from: env.MAIL_FROM, ...msg }).catch((err) => {
+      if (/timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i.test(err.message)) {
+        throw new Error(`SMTP poslužitelj nije dostupan (${err.message}). Hosting vjerojatno blokira SMTP – koristite BREVO_API_KEY.`);
+      }
+      throw err;
+    }),
     verify: () => transporter.verify(),
   };
 }
@@ -84,14 +144,15 @@ ${button(link, 'Potvrdi dolazak')}
   return { subject, html, text };
 }
 
-export function qrEmail(inv, link, qrPng) {
+// imageUrl: kad pružatelj ne podržava ugrađene slike (Brevo API), slika se učitava s poveznice
+export function qrEmail(inv, link, qrPng, { imageUrl } = {}) {
   const subject = `Vaš QR kod – ${EVENT.title}`;
   const n = inv.guests.length;
   const html = layout(subject, `
 ${recipient(inv)}
 <p>Poštovani,</p>
 <p>hvala na potvrdi dolaska. U nastavku je Vaš QR kod${n > 1 ? ` – vrijedi za sve navedene osobe (${n})` : ''}.</p>
-<p style="text-align:center;margin:20px 0;"><img src="cid:qr" width="240" alt="QR kod pozivnice" style="width:240px;max-width:100%;height:auto;background:#fff;padding:10px;border-radius:12px;box-sizing:border-box;"></p>
+<p style="text-align:center;margin:20px 0;"><img src="${imageUrl ? esc(imageUrl) : 'cid:qr'}" width="240" alt="QR kod pozivnice" style="width:240px;max-width:100%;height:auto;background:#fff;padding:10px;border-radius:12px;box-sizing:border-box;"></p>
 ${people(inv)}
 <p style="border:1px solid #d8b25e;border-radius:10px;padding:14px;background:#1f1a12;">
   <strong style="color:#f2d892;">Važno:</strong> QR kod pokažite <strong>pri preuzimanju ulaznica</strong> na blagajni Hrvatskog narodnog kazališta i <strong>pri ulasku u dvoranu</strong>.
@@ -101,6 +162,6 @@ ${button(link, 'Otvori svoju pozivnicu')}`);
   const text = `Hvala na potvrdi dolaska na ${EVENT.title}.\nQR kod je u privitku. Pokažite ga pri preuzimanju ulaznica i ulasku u dvoranu.\nVaša pozivnica: ${link}`;
   return {
     subject, html, text,
-    attachments: [{ filename: 'zlatna-kuna-qr.png', content: qrPng, cid: 'qr', contentType: 'image/png' }],
+    attachments: [{ filename: 'zlatna-kuna-qr.png', content: qrPng, contentType: 'image/png', ...(imageUrl ? {} : { cid: 'qr' }) }],
   };
 }

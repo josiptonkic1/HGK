@@ -24,10 +24,10 @@ for (const e of seed.errors) console.error(`GREŠKA: korisnik "${e.username}" ($
 
 const mailer = createMailer(process.env);
 if (mailer) {
-  console.log(`E-mail: slanje preko ${process.env.SMTP_HOST} (pošiljatelj ${process.env.MAIL_FROM}).`);
-  mailer.verify().then(() => console.log('E-mail: SMTP prijava uspješna.')).catch((err) => console.error(`E-mail: SMTP prijava NIJE uspjela: ${err.message}`));
+  console.log(`E-mail: slanje preko ${mailer.kind === 'brevo-api' ? 'Brevo API' : process.env.SMTP_HOST} (pošiljatelj ${process.env.MAIL_FROM}).`);
+  mailer.verify().then(() => console.log('E-mail: prijava kod pružatelja uspješna.')).catch((err) => console.error(`E-mail: prijava kod pružatelja NIJE uspjela: ${err.message}`));
 } else {
-  console.log('E-mail: nije podešeno (SMTP_HOST i MAIL_FROM) - pozivnice i QR kodovi se ne šalju e-mailom.');
+  console.log('E-mail: nije podešeno (BREVO_API_KEY ili SMTP_HOST, te MAIL_FROM) - pozivnice i QR kodovi se ne šalju e-mailom.');
 }
 
 const app = createApp({

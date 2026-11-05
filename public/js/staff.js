@@ -625,8 +625,8 @@ async function loadMail() {
     renderMailList();
     $('#mail-state').innerHTML = status.enabled
       ? `<div class="alert alert-ok">Slanje e-maila je uključeno. Pošiljatelj: <strong>${esc(status.from)}</strong></div>`
-      : `<div class="alert alert-warn"><strong>Slanje e-maila još nije podešeno.</strong> Na poslužitelju treba upisati SMTP postavke
-          (SMTP_HOST, SMTP_USER, SMTP_PASS, MAIL_FROM) – npr. besplatni Brevo. Dok to nije podešeno, pozivnice se šalju kopiranjem linka.</div>`;
+      : `<div class="alert alert-warn"><strong>Slanje e-maila još nije podešeno.</strong> Na poslužitelju treba upisati
+          <code>BREVO_API_KEY</code> i <code>MAIL_FROM</code> (besplatni Brevo). Dok to nije podešeno, pozivnice se šalju kopiranjem linka.</div>`;
     const line = (p) => `Za slanje: <strong>${p.withEmail}</strong>${p.withoutEmail ? ` · bez e-maila: ${p.withoutEmail}` : ''}`;
     for (const kind of ['invite', 'reminder', 'qr']) {
       $(`#mail-count-${kind}`).innerHTML = line(preview[kind]);
