@@ -64,6 +64,65 @@ describe('e-mail: QR kod gostu', () => {
   });
 });
 
+describe('pozivnica na opću adresu (samo e-mail, bez imena)', () => {
+  test('dodavanje samo s e-mailom; osoba sama upisuje ime', async () => {
+    const mailer = fakeMailer();
+    const ctx = setup({ mailer });
+    const a = await ctx.admin();
+    const res = await a.post('/api/admin/invitations').send({ email: 'gospodarstvo@tvrtka.hr' });
+    assert.equal(res.status, 201);
+    const inv = res.body.invitation;
+    assert.equal(inv.hasName, false);
+    assert.equal(inv.fullName, 'gospodarstvo@tvrtka.hr', 'u popisu se prikazuje e-mail');
+
+    // pozivnica bez imena: nema retka s imenom, generičko "Poštovani,"
+    await a.post(`/api/admin/invitations/${inv.id}/send`).send({ kind: 'invite' });
+    assert.doesNotMatch(mailer.sent[0].html, /font-size:17px;color:#f2d892;"><strong>/);
+
+    // osoba otvori link: ime prazno, e-mail upisan
+    const pub = (await ctx.anon().get(`/api/invite/${inv.token}`)).body;
+    assert.equal(pub.firstName, '');
+    assert.equal(pub.email, 'gospodarstvo@tvrtka.hr');
+    const noName = await ctx.anon().post(`/api/invite/${inv.token}/respond`).send({ firstName: '', lastName: '' });
+    assert.equal(noName.status, 400, 'pri potvrdi ime je obavezno');
+    const ok = await ctx.anon().post(`/api/invite/${inv.token}/respond`).send({ firstName: 'Iva', lastName: 'Ivić' });
+    assert.equal(ok.body.status, 'confirmed');
+    assert.equal(ok.body.mail, 'sent');
+    assert.match(mailer.sent.at(-1).html, /<strong>Iva Ivić<\/strong>/);
+  });
+
+  test('s imenom je pozivnica personalizirana', async () => {
+    const mailer = fakeMailer();
+    const ctx = setup({ mailer });
+    const a = await ctx.admin();
+    const inv = (await a.post('/api/admin/invitations').send({ firstName: 'Ivan', lastName: 'Horvat', email: 'gospodarstvo@tvrtka.hr' })).body.invitation;
+    await a.post(`/api/admin/invitations/${inv.id}/send`).send({ kind: 'invite' });
+    assert.match(mailer.sent[0].html, /<strong>Ivan Horvat<\/strong>/);
+  });
+
+  test('ime se može dodati kasnije, a bez imena i e-maila nema pozivnice', async () => {
+    const ctx = setup();
+    const a = await ctx.admin();
+    assert.equal((await a.post('/api/admin/invitations').send({})).status, 400);
+    assert.equal((await a.post('/api/admin/invitations').send({ email: 'info@tvrtka.hr', confirm: true })).status, 400, 'automatska potvrda traži ime');
+    const inv = (await a.post('/api/admin/invitations').send({ email: 'info@tvrtka.hr' })).body.invitation;
+    const blank = await a.put(`/api/admin/invitations/${inv.id}`).send({ firstName: '', lastName: '', email: 'info@tvrtka.hr' });
+    assert.equal(blank.status, 200, 'spremanje bez imena dok nije odgovorio');
+    const named = await a.put(`/api/admin/invitations/${inv.id}`).send({ firstName: 'Ana', lastName: 'Anić' });
+    assert.equal(named.body.invitation.fullName, 'Ana Anić');
+  });
+
+  test('skupni unos: redak samo s e-mailom', async () => {
+    const ctx = setup();
+    const a = await ctx.admin();
+    const res = (await a.post('/api/admin/invitations/bulk').send({ text: 'gospodarstvo@tvrtka.hr\nIvan Horvat; ivan@primjer.hr' })).body;
+    assert.equal(res.created.length, 2);
+    assert.equal(res.created[0].email, 'gospodarstvo@tvrtka.hr');
+    assert.equal(res.created[0].hasName, false);
+    assert.equal(res.created[1].fullName, 'Ivan Horvat');
+  });
+});
+
 describe('e-mail: pozivnice i podsjetnici iz aplikacije', () => {
   async function seeded() {
     const mailer = fakeMailer();

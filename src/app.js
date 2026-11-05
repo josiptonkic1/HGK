@@ -259,7 +259,9 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
     const created = [];
     const errors = [];
     lines.forEach((line, i) => {
-      const [name = '', email = ''] = line.split(/[;\t]/).map((p) => p.trim());
+      let [name = '', email = ''] = line.split(/[;\t]/).map((p) => p.trim());
+      // redak samo s e-mailom (npr. opća adresa tvrtke) - ime upisuje osoba koja otvori pozivnicu
+      if (!email && name.includes('@')) [name, email] = ['', name];
       const parts = name.split(/\s+/).filter(Boolean);
       const firstName = parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0] || '';
       const lastName = parts.length > 1 ? parts[parts.length - 1] : '';

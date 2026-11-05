@@ -115,7 +115,7 @@ function renderList() {
       const comps = inv.guests.filter((g) => g.isCompanion);
       const dot = (g) => (g?.checkedInAt ? ` <span class="checked-dot" title="Došao ${fmtTime(g.checkedInAt)}">✓</span>` : '');
       return `<tr data-id="${inv.id}">
-        <td><div class="main-name">${esc(inv.fullName)}${dot(primary)}</div>
+        <td><div class="main-name">${esc(inv.fullName)}${dot(primary)}</div>${inv.hasName ? "" : "<div class=\"hint\">ime nije upisano – osoba ga upisuje sama</div>"}
           ${comps.map((c) => `<div class="comp-name">${esc(companionLabel(c.fullName))}${dot(c)}</div>`).join('')}
           ${isAdmin() ? mailLine(inv) : ''}</td>
         <td>${badge(inv.status)}</td>
@@ -543,7 +543,9 @@ function mailHistory(inv) {
 function mailLine(inv) {
   if (!inv.email) return '<div class="hint">bez e-maila</div>';
   const sent = inv.qrSentAt ? '✉ QR poslan' : inv.reminderSentAt ? '✉ podsjetnik poslan' : inv.inviteSentAt ? '✉ pozivnica poslana' : '';
-  return `<div class="hint">${esc(inv.email)}${sent ? ` · ${sent}` : ''}</div>`;
+  // bez imena se e-mail već prikazuje kao naziv - ne ponavljaj ga
+  const parts = [inv.hasName ? esc(inv.email) : '', sent].filter(Boolean);
+  return parts.length ? `<div class="hint">${parts.join(' · ')}</div>` : '';
 }
 
 async function sendOne(inv, kind) {
@@ -607,7 +609,7 @@ function renderMailList() {
       else if (stage === 'not_invited') action = '<button class="btn btn-gold btn-sm" data-mact="invite">Pošalji pozivnicu</button>';
       else action = '<button class="btn btn-outline btn-sm" data-mact="reminder">Pošalji podsjetnik</button>';
       return `<tr data-id="${inv.id}">
-        <td><div class="main-name">${esc(inv.fullName)}</div><div class="hint">${esc(inv.email) || 'bez e-maila'}</div></td>
+        <td><div class="main-name">${inv.hasName ? esc(inv.fullName) : "<span class=\"hint\">ime nije upisano</span>"}</div><div class="hint">${esc(inv.email) || "bez e-maila"}</div></td>
         <td class="hint">${sent}</td>
         <td><div class="row-actions">${action}</div></td>
       </tr>`;

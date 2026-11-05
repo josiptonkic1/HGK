@@ -117,7 +117,8 @@ function serialize(inv, guests) {
     qrCode: `${EVENT.qrPrefix}:${inv.qr_token}`,
     firstName: inv.first_name,
     lastName: inv.last_name,
-    fullName: `${inv.first_name} ${inv.last_name}`.trim(),
+    fullName: `${inv.first_name} ${inv.last_name}`.trim() || inv.email || '(bez imena)',
+    hasName: Boolean(inv.first_name || inv.last_name),
     email: inv.email,
     maxCompanions: inv.max_companions,
     status: inv.status,
@@ -195,8 +196,12 @@ function syncGuests(db, invitationId, primary, companions) {
 export function createInvitation(db, input, { source = 'invite', requireEmail = false } = {}) {
   const settings = getSettings(db);
   const confirm = Boolean(input.confirm) || source === 'open';
-  const firstName = requireName(input.firstName, 'Ime');
-  const lastName = requireName(input.lastName, 'Prezime');
+  const emailOnly = source !== 'open' && !confirm && !cleanText(input.firstName) && !cleanText(input.lastName) && cleanEmail(input.email);
+  if (confirm && source !== 'open' && (!cleanText(input.firstName) || !cleanText(input.lastName))) {
+    throw new AppError(400, 'validation', 'Za automatsku potvrdu dolaska upišite ime i prezime.');
+  }
+  const firstName = emailOnly ? '' : requireName(input.firstName, 'Ime');
+  const lastName = emailOnly ? '' : requireName(input.lastName, 'Prezime');
   const maxCompanions = cleanMaxCompanions(input.maxCompanions, settings.defaultMaxCompanions);
   // Administrator smije dodati više pratnje od zadanog broja; tada se limit podiže.
   const companions = cleanCompanions(input.companions, source === 'admin' ? undefined : maxCompanions);
@@ -253,8 +258,12 @@ export function respondToInvitation(db, token, input, { requireEmail = false } =
 export function updateInvitation(db, id, input) {
   const inv = getInvitationById(db, id);
   if (!inv) throw new AppError(404, 'not_found', 'Uzvanik nije pronađen.');
-  const firstName = 'firstName' in input ? requireName(input.firstName, 'Ime') : inv.firstName;
-  const lastName = 'lastName' in input ? requireName(input.lastName, 'Prezime') : inv.lastName;
+  const nextStatus = input.status ?? inv.status;
+  const nextEmail = 'email' in input ? cleanEmail(input.email) : inv.email;
+  const blank = 'firstName' in input && 'lastName' in input && !cleanText(input.firstName) && !cleanText(input.lastName);
+  const allowBlank = blank && nextStatus === 'pending' && Boolean(nextEmail);
+  const firstName = allowBlank ? '' : 'firstName' in input ? requireName(input.firstName, 'Ime') : inv.firstName;
+  const lastName = allowBlank ? '' : 'lastName' in input ? requireName(input.lastName, 'Prezime') : inv.lastName;
   const status = input.status ?? inv.status;
   if (!['pending', 'confirmed', 'declined'].includes(status)) throw new AppError(400, 'validation', 'Nepoznat status.');
   const companions =

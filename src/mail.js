@@ -44,6 +44,13 @@ ${body}
 </table></td></tr></table></body></html>`;
 }
 
+// Ime primatelja kao zaseban redak iznad "Poštovani," (bez pogađanja roda u obraćanju).
+// Ako ime još nije upisano (pozivnica na opću adresu), redak se izostavlja.
+const recipient = (inv) => {
+  const name = `${inv.firstName || ''} ${inv.lastName || ''}`.trim();
+  return name ? `<p style="margin:0 0 6px;font-size:17px;color:#f2d892;"><strong>${esc(name)}</strong></p>` : '';
+};
+
 const button = (href, label) =>
   `<p style="text-align:center;margin:26px 0;"><a href="${esc(href)}" style="display:inline-block;background:#d9b15c;color:#1b1408;text-decoration:none;font-weight:700;font-family:Arial,sans-serif;padding:14px 28px;border-radius:999px;">${esc(label)}</a></p>`;
 
@@ -55,6 +62,7 @@ const people = (inv) =>
 export function invitationEmail(inv, link) {
   const subject = `Pozivnica – ${EVENT.title}`;
   const html = layout(subject, `
+${recipient(inv)}
 <p>${esc(EVENT.greeting)}<br>${rich(EVENT.intro)}</p>
 <p>Molimo potvrdite dolazak putem osobne pozivnice. Nakon potvrde dobit ćete QR kod za preuzimanje ulaznica i ulazak u dvoranu.</p>
 ${button(link, 'Otvori pozivnicu i potvrdi dolazak')}
@@ -67,7 +75,8 @@ ${button(link, 'Otvori pozivnicu i potvrdi dolazak')}
 export function reminderEmail(inv, link) {
   const subject = `Podsjetnik: potvrda dolaska – ${EVENT.title}`;
   const html = layout(subject, `
-<p>Poštovani${inv.firstName ? ` ${esc(inv.firstName)} ${esc(inv.lastName)}` : ''},</p>
+${recipient(inv)}
+<p>Poštovani,</p>
 <p>ljubazno Vas podsjećamo da još nismo zaprimili potvrdu Vašeg dolaska na ${esc(EVENT.titleAccusative || EVENT.title)}.</p>
 ${button(link, 'Potvrdi dolazak')}
 <p style="font-size:13px;color:#a99d88;">Link: <a href="${esc(link)}" style="color:#d8b25e;word-break:break-all;">${esc(link)}</a></p>`);
@@ -79,7 +88,8 @@ export function qrEmail(inv, link, qrPng) {
   const subject = `Vaš QR kod – ${EVENT.title}`;
   const n = inv.guests.length;
   const html = layout(subject, `
-<p>Poštovani ${esc(inv.firstName)} ${esc(inv.lastName)},</p>
+${recipient(inv)}
+<p>Poštovani,</p>
 <p>hvala na potvrdi dolaska. U nastavku je Vaš QR kod${n > 1 ? ` – vrijedi za sve navedene osobe (${n})` : ''}.</p>
 <p style="text-align:center;margin:20px 0;"><img src="cid:qr" width="240" alt="QR kod pozivnice" style="width:240px;max-width:100%;height:auto;background:#fff;padding:10px;border-radius:12px;box-sizing:border-box;"></p>
 ${people(inv)}
