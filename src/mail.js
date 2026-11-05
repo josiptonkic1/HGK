@@ -34,17 +34,12 @@ function brevoApiMailer(env, fetchImpl = fetch) {
     from: env.MAIL_FROM,
     inlineImages: false, // slika QR koda ide kao link + privitak
     async send(msg) {
-      await call('/smtp/email', {
-        method: 'POST',
-        body: JSON.stringify({
-          sender,
-          to: [{ email: msg.to }],
-          subject: msg.subject,
-          htmlContent: msg.html,
-          textContent: msg.text,
-          attachment: (msg.attachments || []).map((a) => ({ name: a.filename, content: Buffer.from(a.content).toString('base64') })),
-        }),
-      });
+      const payload = { sender, to: [{ email: msg.to }], subject: msg.subject, htmlContent: msg.html };
+      if (msg.text) payload.textContent = msg.text;
+      // Brevo odbija prazan popis privitaka ("attachment is missing") - polje se šalje samo kad ima privitaka
+      const attachments = (msg.attachments || []).map((a) => ({ name: a.filename, content: Buffer.from(a.content).toString('base64') }));
+      if (attachments.length) payload.attachment = attachments;
+      await call('/smtp/email', { method: 'POST', body: JSON.stringify(payload) });
     },
     verify: () => call('/account', { method: 'GET' }),
   };

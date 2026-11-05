@@ -39,6 +39,15 @@ describe('Brevo HTTP API (radi i kad hosting blokira SMTP)', () => {
     assert.deepEqual(c.body.attachment, [{ name: 'qr.png', content: Buffer.from('PNGDATA').toString('base64') }]);
   });
 
+  test('e-mail bez privitka ne šalje prazno polje "attachment" (Brevo ga odbija)', async () => {
+    const f = fakeFetch();
+    const m = createMailer({ BREVO_API_KEY: 'k', MAIL_FROM: 'z@k.hr' }, { fetchImpl: f });
+    await m.send({ to: 'a@b.hr', subject: 'Pozivnica', html: '<p>x</p>', text: 'x' });
+    await m.send({ to: 'a@b.hr', subject: 'Proba', html: '<p>x</p>', attachments: [] });
+    for (const c of f.calls) assert.equal('attachment' in c.body, false);
+    assert.equal('textContent' in f.calls[1].body, false);
+  });
+
   test('greška API-ja se jasno prijavi', async () => {
     const m = createMailer({ BREVO_API_KEY: 'krivi', MAIL_FROM: 'z@k.hr' }, { fetchImpl: fakeFetch(401, '{"message":"Key not found"}') });
     await assert.rejects(m.send({ to: 'a@b.hr', subject: 's', html: 'h' }), /Brevo API \(401\): Key not found/);
