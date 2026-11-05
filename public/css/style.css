@@ -362,3 +362,19 @@ body.staff { background: var(--bg-2); min-height: 100vh; }
   .topbar .who .name { display: none; }
   .topbar .badge { font-size: 11px; padding: 3px 7px; }
 }
+
+/* Animacija loga (video) iznad natpisa "31. ZLATNA KUNA"; rubovi se stapaju s pozadinom */
+.zk-logo .zk-logo-video {
+  display: block;
+  width: min(360px, 86vw);
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  margin: 0 auto -18px;
+  background: transparent;
+  -webkit-mask-image: radial-gradient(closest-side, #000 72%, transparent 100%);
+          mask-image: radial-gradient(closest-side, #000 72%, transparent 100%);
+  position: relative;
+  z-index: 1;
+}
+.zk-logo.has-video .num { font-size: 72px; }
+@media (max-width: 520px) { .zk-logo.has-video .num { font-size: 60px; } }

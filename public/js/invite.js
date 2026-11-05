@@ -29,7 +29,21 @@ function renderStatic() {
   // Zlatna kuna od čestica (kuna.js) - pričeka fontove da logo ima konačnu veličinu
   const marten = () => window.startGoldenMarten?.($('.zk-logo'));
   // animacija kune kreće tek nakon uvodnog videa (intro.js), kad su fontovi učitani
-  Promise.all([document.fonts?.ready, window.zkIntroDone]).then(marten);
+  // Ako postoji animacija loga (/media/logo-loop.mp4), vrti se iznad natpisa umjesto čestica.
+  const logoVideo = () => new Promise((resolve) => {
+    const logo = $('.zk-logo');
+    const v = document.createElement('video');
+    Object.assign(v, { muted: true, loop: true, playsInline: true, autoplay: true, preload: 'auto' });
+    v.className = 'zk-logo-video';
+    v.setAttribute('aria-hidden', 'true');
+    v.addEventListener('canplay', () => { logo.classList.add('has-video'); v.play().catch(() => {}); resolve(true); }, { once: true });
+    v.addEventListener('error', () => { v.remove(); resolve(false); }, { once: true });
+    v.src = '/media/logo-loop.mp4';
+    logo.prepend(v);
+  });
+  Promise.all([document.fonts?.ready, window.zkIntroDone])
+    .then(logoVideo)
+    .then((hasVideo) => { if (!hasVideo) marten(); });
   $('#letter').innerHTML = `
     <p>${esc(event.greeting)}<br>${richText(event.intro)}</p>
     <p>${esc(event.closing)}</p>
