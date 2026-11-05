@@ -95,3 +95,18 @@ export function seatLabel(id) {
 }
 
 export const totalSeats = () => allSeats().length;
+
+/** SVG tlocrta kao tekst (bez DOM-a): koriste ga kartica Tlocrt i stranica /raspored */
+export function svgMarkup({ titles = false } = {}) {
+  const parts = [
+    `<path class="sp-stage" d="M350,26 L650,26 L640,92 Q500,108 360,92 Z"/>`,
+    `<text class="sp-stage-t" x="500" y="66">POZORNICA</text>`,
+    ...boxShapes().map((b) => `<path class="sp-box" d="${b.path}"/><text class="sp-boxno" x="${b.label.x}" y="${b.label.y + 3}">${b.box}</text>`),
+    ...rowLabels().map((r) => `<text class="sp-row" x="${r.x}" y="${r.y + 3}">${r.text}</text>`),
+    '<text class="sp-sec" x="500" y="428">PARTER</text>',
+    '<text class="sp-sec" x="500" y="573">BALKON</text>',
+    '<text class="sp-sec" x="500" y="664">GALERIJA</text>',
+    ...allSeats().map((s) => `<circle class="seat" data-seat="${s.id}" cx="${s.x}" cy="${s.y}" r="5.6">${titles ? '<title></title>' : ''}</circle>`),
+  ];
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="seat-svg" viewBox="-30 0 ${VIEW.width + 60} ${VIEW.height - 40}" role="img" aria-label="Tlocrt dvorane HNK Zagreb">${parts.join('')}</svg>`;
+}

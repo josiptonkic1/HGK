@@ -82,6 +82,11 @@
 
     <!-- POPIS -->
     <section data-panel="list" hidden>
+      <a class="seatmap-link" href="/raspored">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4"/><path d="M4 11h16v4H4z"/><path d="M6 15v4M18 15v4"/></svg>
+        <span><strong>Raspored sjedenja</strong><br><span class="hint">Tlocrt dvorane – tko gdje sjedi i tko je već došao</span></span>
+        <span aria-hidden="true">→</span>
+      </a>
       <div class="stats" id="stats"></div>
       <div class="panel">
         <div class="toolbar">
@@ -225,6 +230,7 @@
               <span><i class="lg-mine"></i>odabrani uzvanik</span>
               <span><i class="lg-taken"></i>zauzeto</span>
             </div>
+            <a class="btn btn-outline btn-sm" href="/raspored" target="_blank" rel="noopener">Pregled rasporeda ↗</a>
             <a class="btn btn-outline btn-sm" href="/api/admin/seating.pdf" download>Preuzmi PDF rasporeda</a>
             <div class="seat-zoom">
               <button type="button" class="btn btn-outline btn-icon" id="seat-zoom-out" aria-label="Umanji">−</button>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0c0a07">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <title>Raspored sjedenja – 31. Zlatna kuna</title>
+  <link rel="stylesheet" href="/vendor/fontsource/montserrat/600.css">
+  <link rel="stylesheet" href="/vendor/fontsource/montserrat/700.css">
+  <link rel="stylesheet" href="/vendor/fontsource/raleway/400.css">
+  <link rel="stylesheet" href="/vendor/fontsource/raleway/600.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <script type="module" src="/js/raspored.js"></script>
+</head>
+<body class="staff seatmap-page">
+  <header class="topbar">
+    <div id="top-logo"></div>
+    <div class="who">
+      <a class="btn btn-outline btn-sm" href="/staff">← Panel</a>
+    </div>
+  </header>
+
+  <main class="rv">
+    <div class="rv-head">
+      <div>
+        <h1 class="rv-title">Raspored sjedenja</h1>
+        <p class="hint mt0" id="rv-summary">Učitavanje…</p>
+      </div>
+      <div class="rv-search">
+        <input type="search" id="rv-search" placeholder="Pronađi osobu…" aria-label="Pronađi osobu" autocomplete="off">
+        <ul class="rv-results" id="rv-results" hidden></ul>
+      </div>
+    </div>
+
+    <div class="rv-grid">
+      <div class="panel rv-planbox">
+        <div class="seat-top">
+          <div class="seat-legend">
+            <span><i class="lg-free"></i>slobodno</span>
+            <span><i class="lg-booked"></i>zauzeto</span>
+            <span><i class="lg-arrived"></i>došao</span>
+            <span><i class="lg-mine"></i>odabrano</span>
+          </div>
+          <div class="seat-zoom">
+            <button type="button" class="btn btn-outline btn-icon" id="rv-zoom-out" aria-label="Umanji">−</button>
+            <span id="rv-zoom-val">100 %</span>
+            <button type="button" class="btn btn-outline btn-icon" id="rv-zoom-in" aria-label="Uvećaj">+</button>
+          </div>
+        </div>
+        <div class="seat-plan rv-plan" id="rv-plan"></div>
+        <p class="hint" id="rv-help">Pređite mišem preko mjesta (na mobitelu dodirnite mjesto) da vidite tko tamo sjedi.</p>
+      </div>
+
+      <aside class="panel rv-card" id="rv-card" aria-live="polite">
+        <p class="hint mt0">Odaberite mjesto na tlocrtu ili potražite osobu.</p>
+      </aside>
+    </div>
+  </main>
+
+  <div class="rv-tip" id="rv-tip" hidden></div>
+</body>
+</html>

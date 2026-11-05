@@ -116,6 +116,18 @@ describe('tlocrt: dodjela sjedećih mjesta', () => {
     assert.equal(res.body.subarray(0, 5).toString(), '%PDF-');
   });
 
+  test('stranica /raspored i podaci za nju dostupni su moderatoru', async () => {
+    const { ctx, a, ivan } = await seeded();
+    await put(a, ivan, { seats: ['P-9-9', 'P-9-10'] });
+    const page = await ctx.anon().get('/raspored');
+    assert.equal(page.status, 200);
+    assert.match(page.text, /Raspored sjedenja/);
+    const m = await ctx.moderator();
+    const inv = (await m.get('/api/staff/invitations')).body.invitations.find((i) => i.id === ivan.id);
+    assert.deepEqual(inv.seatLabels, ['Parter, red 9, sjedalo 9', 'Parter, red 9, sjedalo 10']);
+    assert.equal((await ctx.anon().get('/api/staff/invitations')).status, 401, 'bez prijave nema podataka');
+  });
+
   test('moderator ne može dodjeljivati mjesta', async () => {
     const { ctx, ivan } = await seeded();
     const m = await ctx.moderator();

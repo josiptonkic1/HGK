@@ -592,3 +592,70 @@ input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) { 
 .sl-mail.sent { color: #a9e3bd; }
 .sl-mail.none { color: #f4b3ab; }
 .seat-send { display: grid; gap: 6px; }
+
+/* ---------- /raspored: pregled rasporeda ---------- */
+.seatmap-link {
+  display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--text);
+  background: linear-gradient(90deg, rgba(216, 178, 94, .12), rgba(216, 178, 94, .02)); border: 1px solid rgba(216, 178, 94, .35);
+  border-radius: 14px; padding: 12px 16px; margin-bottom: 14px; transition: border-color .15s, transform .15s;
+}
+.seatmap-link:hover { border-color: var(--gold); transform: translateY(-1px); }
+.seatmap-link svg { width: 28px; height: 28px; color: var(--gold-2); flex: none; }
+.seatmap-link > span:nth-child(2) { flex: 1; }
+.seatmap-link > span:last-child { color: var(--gold-2); font-size: 20px; }
+.rv { max-width: 1400px; margin: 0 auto; padding: 18px 16px 40px; }
+.rv-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.rv-title { font-size: 24px; margin: 0 0 2px; background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.rv-search { position: relative; width: min(360px, 100%); }
+.rv-search input { width: 100%; }
+.rv-results {
+  position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 6px); list-style: none; margin: 0; padding: 6px;
+  background: var(--panel); border: 1px solid var(--gold-3); border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, .6); max-height: 50vh; overflow-y: auto;
+}
+.rv-results button { width: 100%; text-align: left; display: grid; gap: 1px; background: none; border: 0; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+.rv-results button:hover { background: rgba(216, 178, 94, .1); }
+.rv-results .empty { color: var(--muted); padding: 8px 10px; font-size: 14px; }
+.rv-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+.rv-planbox { min-width: 0; }
+.rv-plan { max-height: 76vh; }
+.staff .rv-card { position: sticky; top: 78px; min-height: 160px; animation: none; background: var(--panel); isolation: isolate; }
+.rv-close { float: right; margin: -4px -4px 0 8px; }
+.rv-seat { font: 600 12px var(--font-head); letter-spacing: .6px; text-transform: uppercase; color: var(--gold); }
+.rv-name { font: 600 20px var(--font-head); color: var(--text); margin: 2px 0; }
+.rv-free { color: var(--muted); }
+.rv-sub { font-size: 14px; color: var(--muted); }
+.rv-badges { margin: 8px 0 4px; }
+.rv-h { font-size: 13px !important; text-transform: uppercase; letter-spacing: .6px; color: var(--muted) !important; margin: 16px 0 6px; }
+.rv-partylist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.rv-party { width: 100%; text-align: left; display: grid; gap: 1px; cursor: pointer; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.rv-party[aria-pressed=true] { border-color: var(--gold); }
+.rv-party:disabled { cursor: default; opacity: .7; }
+.rv-dim { color: var(--muted); font-size: 13px; }
+.rv-info { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 14px 0 0; font-size: 14px; }
+.rv-info dt { color: var(--muted); }
+.rv-info dd { margin: 0; word-break: break-word; }
+.rv-tip {
+  position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; max-width: 280px;
+  background: rgba(27, 23, 17, .97); border: 1px solid var(--gold-3); border-radius: 12px; padding: 10px 12px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .6);
+}
+.rv-tip .rv-name { font-size: 16px; }
+.lg-booked { background: var(--gold); }
+.lg-arrived { background: var(--ok); }
+.seat.booked { fill: #b8913f; stroke: #e2c27a; }
+.seat.arrived { fill: var(--ok); stroke: #a9e3bd; }
+.seat.mine { fill: var(--gold-2); stroke: #fff; }
+.seat.arrived.mine { fill: #8fe0aa; }
+.seat.pinned { r: 8; stroke-width: 2.5; filter: drop-shadow(0 0 6px rgba(255, 241, 193, .95)); }
+.seat.match { stroke: #fff; stroke-width: 2.5; animation: rv-pulse 1.2s ease-in-out infinite; }
+@keyframes rv-pulse { 50% { r: 8.5; } }
+@media (max-width: 900px) {
+  .rv-grid { grid-template-columns: minmax(0, 1fr); }
+  .rv-plan { max-height: 62vh; }
+  /* na mobitelu kartica izlazi odozdo */
+  .staff .rv-card { position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 40; margin: 0; border-radius: 18px 18px 0 0;
+    max-height: 62vh; overflow-y: auto; transform: translateY(105%); transition: transform .28s var(--ease); min-height: 0;
+    box-shadow: 0 -20px 50px rgba(0, 0, 0, .6); padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .staff .rv-card.open { transform: none; }
+  .rv-search { width: 100%; }
+}

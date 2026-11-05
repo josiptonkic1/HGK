@@ -2,7 +2,7 @@
 // Spremanje može odmah poslati e-mail s mjestom. Nacrt (još nespremljena mjesta) preživi
 // osvježavanje popisa svakih 15 s jer se crtež samo ažurira, ne gradi ispočetka.
 import { $, api, esc, normalize, toast, companionLabel, fmtDateTime } from './common.js';
-import { VIEW, allSeats, boxShapes, rowLabels, seatLabel } from './seatplan.js';
+import { allSeats, seatLabel, svgMarkup } from './seatplan.js';
 
 let getList = () => [];
 let onSaved = () => {};
@@ -12,7 +12,6 @@ let dirty = false;
 let zoom = 1;
 const checked = new Set(); // uzvanici označeni za skupno slanje mjesta
 
-const SVGNS = 'http://www.w3.org/2000/svg';
 const confirmed = () => getList().filter((i) => i.status === 'confirmed');
 const selected = () => getList().find((i) => i.id === selectedId) || null;
 const people = (inv) => (inv.guests.length ? inv.guests : [{ fullName: inv.fullName, isCompanion: false }]);
@@ -26,23 +25,9 @@ function occupancy() {
 // ---------- crtež ----------
 
 function buildSvg() {
-  const svg = document.createElementNS(SVGNS, 'svg');
-  svg.setAttribute('viewBox', `-30 0 ${VIEW.width + 60} ${VIEW.height - 40}`);
-  svg.setAttribute('class', 'seat-svg');
-  svg.setAttribute('role', 'img');
-  svg.setAttribute('aria-label', 'Tlocrt dvorane HNK Zagreb');
-  const parts = [
-    `<path class="sp-stage" d="M350,26 L650,26 L640,92 Q500,108 360,92 Z"/>`,
-    `<text class="sp-stage-t" x="500" y="66">POZORNICA</text>`,
-    ...boxShapes().map((b) => `<path class="sp-box" d="${b.path}"/><text class="sp-boxno" x="${b.label.x}" y="${b.label.y + 3}">${b.box}</text>`),
-    ...rowLabels().map((r) => `<text class="sp-row" x="${r.x}" y="${r.y + 3}">${r.text}</text>`),
-    `<text class="sp-sec" x="500" y="428">PARTER</text>`,
-    `<text class="sp-sec" x="500" y="573">BALKON</text>`,
-    `<text class="sp-sec" x="500" y="664">GALERIJA</text>`,
-    ...allSeats().map((s) => `<circle class="seat" data-seat="${s.id}" cx="${s.x}" cy="${s.y}" r="5.6"><title></title></circle>`),
-  ];
-  svg.innerHTML = parts.join('');
-  return svg;
+  const holder = document.createElement('div');
+  holder.innerHTML = svgMarkup({ titles: true });
+  return holder.firstElementChild;
 }
 
 function paintSeats() {

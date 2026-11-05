@@ -156,6 +156,7 @@ export function createApp({ db, sessionSecret, secureCookies = false, trustProxy
   app.get('/p/:token', page('invite.html'));
   app.get('/prijava', page('login.html'));
   app.get('/staff', page('staff.html'));
+  app.get('/raspored', page('raspored.html'));
 
   app.use('/vendor/html5-qrcode.min.js', (req, res) => res.sendFile(require.resolve('html5-qrcode/html5-qrcode.min.js')));
   app.use('/vendor/fontsource', express.static(join(dirname(require.resolve('@fontsource/montserrat/package.json')), '..'), { maxAge: '7d' }));
