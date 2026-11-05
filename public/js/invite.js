@@ -52,6 +52,19 @@ function showForm() {
   // E-mail je obavezan kad aplikacija šalje QR kod e-mailom
   $('#email').required = Boolean(settings.emailEnabled);
   $('#email-hint').textContent = settings.emailEnabled ? '(na njega šaljemo QR kod)' : '(neobavezno)';
+  // Osobni link s već poznatim e-mailom: gost ga ne mora upisivati, samo ga vidi (i može promijeniti).
+  const known = Boolean(personalToken && invitation?.email);
+  $('#email-field').hidden = known;
+  $('#email-known').hidden = !known;
+  if (known) {
+    $('#email-known').innerHTML = `${settings.emailEnabled ? 'QR kod poslat ćemo na' : 'Vaš e-mail:'} <strong>${esc(invitation.email)}</strong> · <a href="#" id="email-change">promijeni</a>`;
+    $('#email-change').addEventListener('click', (e) => {
+      e.preventDefault();
+      $('#email-known').hidden = true;
+      $('#email-field').hidden = false;
+      $('#email').focus();
+    });
+  }
   const comps = (invitation?.guests || []).filter((g) => g.isCompanion).map((g) => ({ firstName: g.firstName, lastName: g.lastName }));
   editor.setMax(max);
   editor.reset(comps);
